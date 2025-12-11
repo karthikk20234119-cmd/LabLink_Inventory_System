@@ -1,0 +1,881 @@
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { FlaskConical, Mail, Lock, User, Building2, Phone, MapPin, Eye, EyeOff, Hash } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
+
+type AuthMode = "login" | "register" | "verify" | "forgot_password";
+
+// Validation schemas
+const emailSchema = z.string().email("Please enter a valid email address");
+const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
+interface Department {
+  id: string;
+  name: string;
+}
+
+export default function Auth() {
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [otp, setOtp] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    fullName: "",
+    registerNumber: "",
+    department: "",
+    phone: "",
+    collegeName: "",
+    address: "",
+  });
+
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Setup default admin on mount
+  useEffect(() => {
+    const setupAdmin = async () => {
+      try {
+        await supabase.functions.invoke('setup-admin');
+      } catch (error) {
+        console.log("Admin setup check completed");
+      }
+    };
+    setupAdmin();
+  }, []);
+
+  // Fetch departments for registration
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      const { data } = await supabase
+        .from('departments')
+        .select('id, name')
+        .eq('is_active', true);
+      
+      if (data) {
+        setDepartments(data);
+      }
+    };
+    fetchDepartments();
+  }, []);
+
+  // Handle email confirmation callback
+  useEffect(() => {
+    const handleEmailConfirmation = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const confirmed = urlParams.get('confirmed');
+      
+      if (confirmed === 'true' && user) {
+        // User just confirmed their email, activate their profile
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            is_verified: true, 
+            is_active: true 
+          })
+          .eq('id', user.id);
+
+        if (!error) {
+          toast({
+            title: "Email Verified! ✅",
+            description: "Your account is now active. Welcome to LabLink!",
+          });
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    };
+    
+    handleEmailConfirmation();
+  }, [user]);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, loading, navigate]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
+    }
+  };
+
+  const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    const emailResult = emailSchema.safeParse(formData.email);
+    if (!emailResult.success) {
+      newErrors.email = emailResult.error.errors[0].message;
+    }
+
+    const passwordResult = passwordSchema.safeParse(formData.password);
+    if (!passwordResult.success) {
+      newErrors.password = passwordResult.error.errors[0].message;
+    }
+
+    if (mode === "register") {
+      if (!formData.fullName.trim()) {
+        newErrors.fullName = "Full name is required";
+      }
+      if (!formData.registerNumber.trim()) {
+        newErrors.registerNumber = "Register number is required";
+      }
+      if (!formData.department) {
+        newErrors.department = "Please select a department";
+      }
+      if (!formData.collegeName.trim()) {
+        newErrors.collegeName = "College name is required";
+      }
+      if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "Passwords don't match";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const sendVerificationOTP = async (email: string, name: string) => {
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store OTP in database
+    const { error: otpError } = await supabase
+      .from('otp_verifications')
+      .insert({
+        email,
+        otp: otpCode,
+        expires_at: expiresAt.toISOString(),
+      });
+
+    if (otpError) {
+      console.error("OTP insert error:", otpError);
+      throw new Error("Failed to generate OTP");
+    }
+
+    // Send OTP email
+    console.log("Sending verification email to:", email);
+    const { data, error: emailError } = await supabase.functions.invoke('send-email', {
+      body: {
+        type: 'verification',
+        to: email,
+        name,
+        otp: otpCode,
+      }
+    });
+
+    console.log("Email response:", data, "Error:", emailError);
+
+    if (emailError) {
+      console.error("Email function error:", emailError);
+      throw new Error("Failed to send verification email: " + emailError.message);
+    }
+
+    if (data && !data.success) {
+      console.error("Email sending failed:", data.error);
+      throw new Error(data.error || "Failed to send verification email");
+    }
+
+    console.log("Verification email sent successfully");
+  };
+
+  const verifyOTP = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Check OTP
+      const { data: otpData, error: otpError } = await supabase
+        .from('otp_verifications')
+        .select('*')
+        .eq('email', pendingEmail)
+        .eq('otp', otp)
+        .eq('verified', false)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (otpError || !otpData) {
+        toast({
+          variant: "destructive",
+          title: "Invalid OTP",
+          description: "The OTP is invalid or has expired. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Mark OTP as verified
+      await supabase
+        .from('otp_verifications')
+        .update({ verified: true })
+        .eq('id', otpData.id);
+
+      // Now create the user account
+      const redirectUrl = `${window.location.origin}/auth`;
+      
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: pendingEmail,
+        password: formData.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: formData.fullName,
+            phone: formData.phone || null,
+            address: formData.address || null,
+            college_name: formData.collegeName,
+            department_id: formData.department,
+            register_number: formData.registerNumber,
+          }
+        }
+      });
+
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      // Update profile with register number and set as verified
+      if (signUpData.user) {
+        await supabase
+          .from('profiles')
+          .update({ 
+            register_number: formData.registerNumber,
+            college_name: formData.collegeName,
+            phone: formData.phone || null,
+            is_verified: true,
+            is_active: true,
+          })
+          .eq('id', signUpData.user.id);
+      }
+
+      // Send credentials email to student from lablink83@gmail.com
+      try {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'credentials',
+            to: pendingEmail,
+            name: formData.fullName,
+            email: pendingEmail,
+            password: formData.password,
+          }
+        });
+      } catch (emailError) {
+        console.log("Credentials email may not have been sent:", emailError);
+        // Don't fail registration if email fails
+      }
+
+      toast({
+        title: "Registration Successful!",
+        description: "Your account has been created. Login credentials have been sent to your email. You can now log in.",
+      });
+      
+      setMode("login");
+      setFormData({
+        email: "",
+        password: "",
+        confirmPassword: "",
+        fullName: "",
+        registerNumber: "",
+        department: "",
+        phone: "",
+        collegeName: "",
+        address: "",
+      });
+      setOtp("");
+      setPendingEmail("");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description: error.message || "An error occurred during verification.",
+      });
+    }
+    
+    setIsLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailResult = emailSchema.safeParse(forgotPasswordEmail);
+    if (!emailResult.success) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: emailResult.error.errors[0].message,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Reset Email Sent! 📧",
+        description: "Check your email for a password reset link.",
+      });
+      setMode("login");
+      setForgotPasswordEmail("");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to send reset email.",
+      });
+    }
+    setIsLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (mode === "verify") {
+      await verifyOTP();
+      return;
+    }
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      if (mode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) {
+          if (error.message.includes("Invalid login credentials")) {
+            toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: "Invalid email or password. Please try again.",
+            });
+          } else if (error.message.includes("Email not confirmed")) {
+            toast({
+              variant: "destructive",
+              title: "Email Not Verified",
+              description: "Please verify your email before logging in.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: error.message,
+            });
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Log login time
+        const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+        if (loggedInUser) {
+          await supabase.from('login_logs').insert({
+            user_id: loggedInUser.id,
+            login_time: new Date().toISOString(),
+          });
+        }
+
+        toast({
+          title: "Welcome back!",
+          description: "Login successful. Redirecting to dashboard...",
+        });
+        navigate("/dashboard");
+      } else {
+        // Registration - first check if email already exists
+        const { data: existingUser } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('email', formData.email)
+          .maybeSingle();
+
+        if (existingUser) {
+          toast({
+            variant: "destructive",
+            title: "Registration Failed",
+            description: "An account with this email already exists.",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Use Supabase built-in email confirmation
+        const redirectUrl = `${window.location.origin}/auth?confirmed=true`;
+        
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              full_name: formData.fullName,
+              phone: formData.phone || null,
+              address: formData.address || null,
+              college_name: formData.collegeName,
+              department_id: formData.department,
+              register_number: formData.registerNumber,
+            }
+          }
+        });
+
+        if (signUpError) {
+          throw signUpError;
+        }
+
+        // Update profile with register number (will be pending until email confirmed)
+        if (signUpData.user) {
+          await supabase
+            .from('profiles')
+            .update({ 
+              register_number: formData.registerNumber,
+              college_name: formData.collegeName,
+              phone: formData.phone || null,
+              is_verified: false,
+              is_active: false,
+            })
+            .eq('id', signUpData.user.id);
+        }
+
+        // Check if email confirmation is required
+        if (signUpData.user && !signUpData.session) {
+          // Email confirmation required
+          toast({
+            title: "Check Your Email! 📧",
+            description: "We've sent a confirmation link to your email. Please click it to activate your account.",
+          });
+        } else {
+          // No email confirmation needed (or already confirmed)
+          toast({
+            title: "Registration Successful!",
+            description: "Your account has been created. You can now log in.",
+          });
+        }
+        
+        setMode("login");
+        setFormData({
+          email: "",
+          password: "",
+          confirmPassword: "",
+          fullName: "",
+          registerNumber: "",
+          department: "",
+          phone: "",
+          collegeName: "",
+          address: "",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "An unexpected error occurred.",
+      });
+    }
+    
+    setIsLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary via-secondary/95 to-primary/20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary/95 to-primary/20">
+      <div className="flex min-h-screen">
+        {/* Left Panel - Branding */}
+        <div className="hidden w-1/2 flex-col justify-between p-12 lg:flex">
+          <div>
+            <Link to="/" className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-glow">
+                <FlaskConical className="h-7 w-7 text-primary-foreground" />
+              </div>
+              <span className="font-display text-2xl font-bold text-secondary-foreground">LabLink</span>
+            </Link>
+          </div>
+
+          <div className="space-y-6">
+            <h1 className="font-display text-4xl font-bold leading-tight text-secondary-foreground">
+              Digital Laboratory
+              <br />
+              <span className="text-primary">Inventory Management</span>
+            </h1>
+            <p className="max-w-md text-lg text-secondary-foreground/70">
+              Streamline your lab operations with real-time inventory tracking, QR-based management, and comprehensive analytics.
+            </p>
+            <div className="flex gap-4">
+              <div className="rounded-lg bg-background/10 p-4 backdrop-blur">
+                <p className="text-3xl font-bold text-secondary-foreground">2,450+</p>
+                <p className="text-sm text-secondary-foreground/70">Items Managed</p>
+              </div>
+              <div className="rounded-lg bg-background/10 p-4 backdrop-blur">
+                <p className="text-3xl font-bold text-secondary-foreground">99.9%</p>
+                <p className="text-sm text-secondary-foreground/70">Uptime</p>
+              </div>
+              <div className="rounded-lg bg-background/10 p-4 backdrop-blur">
+                <p className="text-3xl font-bold text-secondary-foreground">500+</p>
+                <p className="text-sm text-secondary-foreground/70">Active Users</p>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-sm text-secondary-foreground/50">
+            © 2025 LabLink. Enterprise Lab Management Solution.
+          </p>
+        </div>
+
+        {/* Right Panel - Auth Form */}
+        <div className="flex w-full items-center justify-center p-6 lg:w-1/2 lg:bg-background">
+          <Card className="w-full max-w-md border-0 shadow-2xl lg:border">
+            <CardHeader className="space-y-1 text-center">
+              <div className="mb-4 flex justify-center lg:hidden">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-glow">
+                  <FlaskConical className="h-7 w-7 text-primary-foreground" />
+                </div>
+              </div>
+              <CardTitle className="font-display text-2xl">
+                {mode === "login" ? "Welcome Back" : mode === "verify" ? "Verify Email" : mode === "forgot_password" ? "Reset Password" : "Create Account"}
+              </CardTitle>
+              <CardDescription>
+                {mode === "login"
+                  ? "Enter your credentials to access your account"
+                  : mode === "verify"
+                  ? `Enter the 6-digit code sent to ${pendingEmail}`
+                  : mode === "forgot_password"
+                  ? "Enter your email to receive a password reset link"
+                  : "Register as a student to start using LabLink"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {mode === "forgot_password" ? (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="forgotEmail">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="forgotEmail"
+                        type="email"
+                        placeholder="Enter your email"
+                        className="pl-10"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full bg-primary hover:bg-primary/90"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("login")}
+                    className="w-full text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    ← Back to login
+                  </button>
+                </form>
+              ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {mode === "verify" ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="otp">Verification Code</Label>
+                      <Input
+                        id="otp"
+                        name="otp"
+                        placeholder="Enter 6-digit code"
+                        className="text-center text-2xl tracking-widest"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        maxLength={6}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className="w-full bg-primary hover:bg-primary/90"
+                      disabled={isLoading || otp.length !== 6}
+                    >
+                      {isLoading ? "Verifying..." : "Verify & Create Account"}
+                    </Button>
+                    <p className="text-center text-sm text-muted-foreground">
+                      Didn't receive the code?{" "}
+                      <button
+                        type="button"
+                        onClick={() => sendVerificationOTP(pendingEmail, formData.fullName)}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        Resend
+                      </button>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setMode("register")}
+                      className="w-full text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      ← Back to registration
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {mode === "register" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="fullName">Full Name *</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              id="fullName"
+                              name="fullName"
+                              placeholder="Enter your full name"
+                              className={`pl-10 ${errors.fullName ? 'border-destructive' : ''}`}
+                              value={formData.fullName}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                          {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="registerNumber">Register Number *</Label>
+                          <div className="relative">
+                            <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              id="registerNumber"
+                              name="registerNumber"
+                              placeholder="Enter your register number"
+                              className={`pl-10 ${errors.registerNumber ? 'border-destructive' : ''}`}
+                              value={formData.registerNumber}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                          {errors.registerNumber && <p className="text-sm text-destructive">{errors.registerNumber}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="department">Department *</Label>
+                          <div className="relative">
+                            <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <select
+                              id="department"
+                              name="department"
+                              className={`flex h-11 w-full rounded-lg border-2 border-input bg-background px-4 py-2 pl-10 text-sm transition-all duration-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ${errors.department ? 'border-destructive' : ''}`}
+                              value={formData.department}
+                              onChange={handleInputChange}
+                            >
+                              <option value="">Select Department</option>
+                              {departments.map((dept) => (
+                                <option key={dept.id} value={dept.id}>
+                                  {dept.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {errors.department && <p className="text-sm text-destructive">{errors.department}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="collegeName">College Name *</Label>
+                          <div className="relative">
+                            <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              id="collegeName"
+                              name="collegeName"
+                              placeholder="Enter your college name"
+                              className={`pl-10 ${errors.collegeName ? 'border-destructive' : ''}`}
+                              value={formData.collegeName}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                          {errors.collegeName && <p className="text-sm text-destructive">{errors.collegeName}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone Number (Optional)</Label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              id="phone"
+                              name="phone"
+                              type="tel"
+                              placeholder="Enter phone number"
+                              className="pl-10"
+                              value={formData.phone}
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email *</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="Enter your email"
+                          className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
+                          value={formData.email}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password *</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
+                          value={formData.password}
+                          onChange={handleInputChange}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                      {mode === "register" && (
+                        <p className="text-xs text-muted-foreground">
+                          Min 8 chars, with uppercase, lowercase, number & special character
+                        </p>
+                      )}
+                    </div>
+
+                    {mode === "register" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Confirm your password"
+                            className={`pl-10 ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                            value={formData.confirmPassword}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
+                      </div>
+                    )}
+
+                    {mode === "login" && (
+                      <div className="flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setMode("forgot_password")}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className="w-full bg-primary hover:bg-primary/90"
+                      disabled={isLoading}
+                    >
+                      {isLoading
+                        ? "Please wait..."
+                        : mode === "login"
+                        ? "Sign In"
+                        : "Continue"}
+                    </Button>
+
+                    <p className="text-center text-sm text-muted-foreground">
+                      {mode === "login" ? (
+                        <>
+                          Don't have an account?{" "}
+                          <button
+                            type="button"
+                            onClick={() => setMode("register")}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            Register as Student
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          Already have an account?{" "}
+                          <button
+                            type="button"
+                            onClick={() => setMode("login")}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            Sign In
+                          </button>
+                        </>
+                      )}
+                    </p>
+                  </>
+                )}
+              </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
