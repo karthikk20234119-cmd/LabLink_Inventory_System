@@ -331,33 +331,35 @@ export default function Requests() {
     switch (req.status) {
       case "pending":
         return (
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-1 sm:gap-2">
             <Button 
               size="sm" 
               variant="outline"
-              className="text-success border-success hover:bg-success/10"
+              className="text-success border-success hover:bg-success/10 h-8 px-2 sm:px-3"
               onClick={() => openApprovalDialog(req)}
             >
-              <Check className="h-4 w-4 mr-1" /> Approve
+              <Check className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Approve</span>
             </Button>
             <Button 
               size="sm" 
               variant="outline"
-              className="text-destructive border-destructive hover:bg-destructive/10"
+              className="text-destructive border-destructive hover:bg-destructive/10 h-8 px-2 sm:px-3"
               onClick={() => openRejectionDialog(req)}
             >
-              <X className="h-4 w-4 mr-1" /> Reject
+              <X className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Reject</span>
             </Button>
           </div>
         );
       case "approved":
       case "return_pending":
         return (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
             {req.pickup_location && (
               <span className="flex items-center gap-1">
                 <Package className="h-3 w-3" />
-                {req.pickup_location}
+                <span className="hidden sm:inline">{req.pickup_location}</span>
               </span>
             )}
           </div>
@@ -371,115 +373,117 @@ export default function Requests() {
     <DashboardLayout title="Borrow Requests" subtitle="Manage item borrowing requests">
       <div className="space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total</CardDescription>
-              <CardTitle className="text-2xl">{requests.length}</CardTitle>
+        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4">
+          <Card className="col-span-1">
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Total</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl">{requests.length}</CardTitle>
             </CardHeader>
           </Card>
-          <Card className="border-warning/30">
-            <CardHeader className="pb-2">
-              <CardDescription>Pending</CardDescription>
-              <CardTitle className="text-2xl text-warning">{pendingCount}</CardTitle>
+          <Card className="border-warning/30 col-span-1">
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Pending</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl text-warning">{pendingCount}</CardTitle>
             </CardHeader>
           </Card>
-          <Card className="border-success/30">
-            <CardHeader className="pb-2">
-              <CardDescription>Active</CardDescription>
-              <CardTitle className="text-2xl text-success">{activeCount}</CardTitle>
+          <Card className="border-success/30 col-span-1">
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Active</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl text-success">{activeCount}</CardTitle>
             </CardHeader>
           </Card>
-          <Card className="border-info/30">
-            <CardHeader className="pb-2">
-              <CardDescription>Returns Pending</CardDescription>
-              <CardTitle className="text-2xl text-info">{returnsPendingCount}</CardTitle>
+          <Card className="border-info/30 hidden sm:block">
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Returns</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl text-info">{returnsPendingCount}</CardTitle>
             </CardHeader>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Returned</CardDescription>
-              <CardTitle className="text-2xl">{returnedCount}</CardTitle>
+          <Card className="hidden md:block">
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Returned</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl">{returnedCount}</CardTitle>
             </CardHeader>
           </Card>
-          <Card className="border-destructive/30">
-            <CardHeader className="pb-2">
-              <CardDescription>Rejected</CardDescription>
-              <CardTitle className="text-2xl text-destructive">{rejectedCount}</CardTitle>
+          <Card className="border-destructive/30 hidden md:block">
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Rejected</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl text-destructive">{rejectedCount}</CardTitle>
             </CardHeader>
           </Card>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="flex flex-col sm:flex-row gap-4 flex-1">
-            <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by item or student..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
             
-            {/* Department Filter */}
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-[180px]">
-                <Building2 className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              {/* Department Filter */}
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <Building2 className="h-4 w-4 mr-2 hidden sm:block" />
+                  <SelectValue placeholder="Dept" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Export Button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={isExporting || filteredRequests.length === 0} className="h-10">
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline ml-2">Export</span>
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('excel')}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-          
-          {/* Export Button */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={isExporting || filteredRequests.length === 0}>
-                {isExporting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Export
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                <FileText className="h-4 w-4 mr-2" />
-                Export as PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('excel')}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export as Excel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="pending">
+          <TabsList className="flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="pending" className="text-xs sm:text-sm px-2 sm:px-3">
               Pending ({pendingCount})
             </TabsTrigger>
-            <TabsTrigger value="active">
+            <TabsTrigger value="active" className="text-xs sm:text-sm px-2 sm:px-3">
               Active ({activeCount})
             </TabsTrigger>
-            <TabsTrigger value="returns" className="text-info">
+            <TabsTrigger value="returns" className="text-info text-xs sm:text-sm px-2 sm:px-3">
               Returns ({returnsPendingCount})
             </TabsTrigger>
-            <TabsTrigger value="returned">Returned</TabsTrigger>
-            <TabsTrigger value="rejected">Rejected</TabsTrigger>
-            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="returned" className="hidden sm:flex text-xs sm:text-sm px-2 sm:px-3">Returned</TabsTrigger>
+            <TabsTrigger value="rejected" className="hidden sm:flex text-xs sm:text-sm px-2 sm:px-3">Rejected</TabsTrigger>
+            <TabsTrigger value="all" className="text-xs sm:text-sm px-2 sm:px-3">All</TabsTrigger>
           </TabsList>
 
           {/* Returns Tab Content */}
@@ -506,10 +510,10 @@ export default function Requests() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Item</TableHead>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead>Condition</TableHead>
-                          <TableHead>Submitted</TableHead>
+                          <TableHead className="hidden sm:table-cell">Student</TableHead>
+                          <TableHead className="hidden md:table-cell">Qty</TableHead>
+                          <TableHead className="hidden lg:table-cell">Condition</TableHead>
+                          <TableHead className="hidden sm:table-cell">Submitted</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -517,19 +521,22 @@ export default function Requests() {
                         {returnRequests.map((ret) => (
                           <TableRow key={ret.id}>
                             <TableCell>
-                              <p className="font-medium">{ret.item?.name || "Unknown"}</p>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span>{ret.student?.full_name || "Unknown"}</span>
+                              <div>
+                                <p className="font-medium text-sm">{ret.item?.name || "Unknown"}</p>
+                                <p className="text-xs text-muted-foreground sm:hidden">{ret.student?.full_name}</p>
                               </div>
                             </TableCell>
-                            <TableCell>{ret.quantity}</TableCell>
-                            <TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">{ret.student?.full_name || "Unknown"}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{ret.quantity}</TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               <BorrowStatusBadge status={ret.item_condition} size="sm" />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden sm:table-cell">
                               <span className="text-xs text-muted-foreground">
                                 {formatDistanceToNow(new Date(ret.return_datetime), { addSuffix: true })}
                               </span>
@@ -539,9 +546,10 @@ export default function Requests() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openReturnVerification(ret)}
+                                className="h-8"
                               >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Review
+                                <Eye className="h-4 w-4" />
+                                <span className="hidden sm:inline ml-1">Review</span>
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -578,12 +586,10 @@ export default function Requests() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Item</TableHead>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Qty</TableHead>
-                          <TableHead>Duration</TableHead>
-                          <TableHead>Department</TableHead>
+                          <TableHead className="hidden sm:table-cell">Student</TableHead>
+                          <TableHead className="hidden lg:table-cell">Duration</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Date</TableHead>
+                          <TableHead className="hidden md:table-cell">Date</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -592,35 +598,29 @@ export default function Requests() {
                           <TableRow key={req.id}>
                             <TableCell>
                               <div>
-                                <p className="font-medium">{req.item?.name || "Unknown"}</p>
+                                <p className="font-medium text-sm">{req.item?.name || "Unknown"}</p>
                                 <p className="text-xs text-muted-foreground font-mono">{req.item?.item_code}</p>
+                                <p className="text-xs text-muted-foreground sm:hidden">{req.student?.full_name}</p>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden sm:table-cell">
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <div>
                                   <p className="text-sm">{req.student?.full_name || "Unknown"}</p>
-                                  <p className="text-xs text-muted-foreground">{req.student?.email}</p>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <span className="font-medium">{req.quantity || 1}</span>
-                            </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               <div className="flex items-center gap-1 text-sm">
                                 <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                                 {format(new Date(req.requested_start_date), "MMM d")} - {format(new Date(req.requested_end_date), "MMM d")}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <span className="text-sm">{getDepartmentName(req.item_department_id)}</span>
-                            </TableCell>
-                            <TableCell>
                               <BorrowStatusBadge status={req.status} />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden md:table-cell">
                               <p className="text-xs text-muted-foreground">
                                 {formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}
                               </p>
