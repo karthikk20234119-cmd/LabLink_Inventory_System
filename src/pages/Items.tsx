@@ -242,10 +242,10 @@ export default function ItemsPage() {
             <div className="flex gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" disabled={isExporting || filteredItems.length === 0}>
-                    {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-                    Export
-                    <ChevronDown className="h-4 w-4 ml-2" />
+                  <Button variant="outline" size="sm" disabled={isExporting || filteredItems.length === 0} className="h-9 sm:h-10">
+                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    <span className="hidden sm:inline ml-2">Export</span>
+                    <ChevronDown className="h-4 w-4 ml-1 sm:ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -259,10 +259,11 @@ export default function ItemsPage() {
               </DropdownMenu>
               <Button 
                 onClick={() => navigate("/items/new")}
-                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/25 rounded-xl h-11"
+                size="sm"
+                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/25 rounded-xl h-9 sm:h-10"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Item
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Add Item</span>
               </Button>
             </div>
           )}
@@ -389,15 +390,13 @@ export default function ItemsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/50 hover:bg-muted/50">
-                    <TableHead className="font-semibold">Image</TableHead>
-                    <TableHead className="font-semibold">Item Code</TableHead>
-                    <TableHead className="font-semibold">Name</TableHead>
-                    <TableHead className="font-semibold">Category</TableHead>
+                    <TableHead className="font-semibold">Item</TableHead>
+                    <TableHead className="font-semibold hidden md:table-cell">Category</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Qty</TableHead>
-                    <TableHead className="font-semibold">Condition</TableHead>
-                    <TableHead className="font-semibold">Location</TableHead>
-                    <TableHead className="font-semibold text-right">Actions</TableHead>
+                    <TableHead className="font-semibold hidden sm:table-cell">Qty</TableHead>
+                    <TableHead className="font-semibold hidden lg:table-cell">Condition</TableHead>
+                    <TableHead className="font-semibold hidden lg:table-cell">Location</TableHead>
+                    <TableHead className="font-semibold text-right w-[60px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -412,33 +411,36 @@ export default function ItemsPage() {
                     </TableRow>
                   ) : paginatedItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-16">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-16">
                         <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                         <p>No items found. Add your first item!</p>
                       </TableCell>
                     </TableRow>
                   ) : (
                     paginatedItems.map((item) => (
-                      <TableRow key={item.id} className="border-border/30 hover:bg-muted/30 group">
+                      <TableRow 
+                        key={item.id} 
+                        className="border-border/30 hover:bg-muted/30 cursor-pointer"
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
                         <TableCell>
-                          <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden">
-                            {item.image_url ? (
-                              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Package className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            )}
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted overflow-hidden flex-shrink-0">
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-sm truncate max-w-[150px] sm:max-w-[200px]">{item.name}</div>
+                              <div className="text-muted-foreground text-xs truncate">{item.item_code || "No code"}</div>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {item.item_code || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold group-hover:text-blue-600 transition-colors">{item.name}</div>
-                          <div className="text-muted-foreground text-sm">{item.serial_number || "No S/N"}</div>
-                        </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {item.category && (
                             <Badge 
                               variant="outline"
@@ -447,23 +449,28 @@ export default function ItemsPage() {
                                 color: item.category.color_hex,
                                 borderColor: item.category.color_hex + "40"
                               }}
+                              className="text-xs"
                             >
                               {item.category.name}
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        <TableCell className={item.current_quantity <= item.reorder_threshold ? "text-amber-500 font-semibold" : ""}>
+                        <TableCell className={`hidden sm:table-cell ${item.current_quantity <= item.reorder_threshold ? "text-amber-500 font-semibold" : ""}`}>
                           {item.current_quantity}
                         </TableCell>
-                        <TableCell>{getConditionBadge(item.condition || "good")}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
+                        <TableCell className="hidden lg:table-cell">{getConditionBadge(item.condition || "good")}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
                           {item.lab_location || "-"}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="rounded-lg h-8 w-8 sm:h-9 sm:w-9"
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
