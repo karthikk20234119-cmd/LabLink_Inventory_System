@@ -527,10 +527,17 @@ export default function Auth() {
         <div className="hidden w-1/2 flex-col justify-between p-12 lg:flex">
           <div>
             <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-glow">
-                <FlaskConical className="h-7 w-7 text-primary-foreground" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden shadow-lg shadow-blue-500/30">
+                <img 
+                  src="/lablink-logo.jpg" 
+                  alt="LabLink" 
+                  className="h-full w-full object-cover"
+                />
               </div>
-              <span className="font-display text-2xl font-bold text-secondary-foreground">LabLink</span>
+              <div className="flex flex-col">
+                <span className="font-display text-2xl font-bold text-secondary-foreground">LabLink</span>
+                <span className="text-xs text-blue-400 -mt-1 tracking-wider">LAB SMART</span>
+              </div>
             </Link>
           </div>
 
@@ -568,9 +575,17 @@ export default function Auth() {
         <div className="flex w-full items-center justify-center p-6 lg:w-1/2 lg:bg-background">
           <Card className="w-full max-w-md border-0 shadow-2xl lg:border">
             <CardHeader className="space-y-1 text-center">
-              <div className="mb-4 flex justify-center lg:hidden">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-glow">
-                  <FlaskConical className="h-7 w-7 text-primary-foreground" />
+              <div className="mb-4 flex flex-col items-center lg:hidden">
+                <div className="flex h-16 w-16 items-center justify-center rounded-xl overflow-hidden shadow-lg shadow-blue-500/30">
+                  <img 
+                    src="/lablink-logo.jpg" 
+                    alt="LabLink" 
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex flex-col items-center mt-2">
+                  <span className="font-display text-xl font-bold">LabLink</span>
+                  <span className="text-xs text-blue-500 -mt-0.5 tracking-wider">LAB SMART</span>
                 </div>
               </div>
               <CardTitle className="font-display text-2xl">

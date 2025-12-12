@@ -61,11 +61,18 @@ export default function Index() {
       {/* Navigation */}
       <nav className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-glow">
-              <FlaskConical className="h-6 w-6 text-white" />
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-lg shadow-blue-500/30">
+              <img 
+                src="/lablink-logo.jpg" 
+                alt="LabLink" 
+                className="h-full w-full object-cover"
+              />
             </div>
-            <span className="font-display text-xl font-bold">LabLink</span>
+            <div className="flex flex-col">
+              <span className="font-display text-xl font-bold">LabLink</span>
+              <span className="text-[10px] text-blue-500 -mt-1 tracking-wider">LAB SMART</span>
+            </div>
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/auth">
@@ -198,11 +205,18 @@ export default function Index() {
       <footer className="border-t border-border py-12">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <FlaskConical className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden shadow-md">
+                <img 
+                  src="/lablink-logo.jpg" 
+                  alt="LabLink" 
+                  className="h-full w-full object-cover"
+                />
               </div>
-              <span className="font-display font-bold">LabLink</span>
+              <div className="flex flex-col">
+                <span className="font-display font-bold">LabLink</span>
+                <span className="text-[9px] text-blue-500 -mt-0.5 tracking-wider">LAB SMART</span>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2025 LabLink. Enterprise Lab Management Solution. All rights reserved.
