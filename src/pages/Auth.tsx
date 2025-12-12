@@ -573,7 +573,6 @@ export default function Auth() {
             <p className="text-xs text-secondary-foreground/40">
               A <span className="text-blue-400">LabLink Solution</span> by{" "}
               <span className="text-orange-400">Alphax Heros</span>
-              <span className="text-secondary-foreground/30"> (Santhakumar K)</span>
             </p>
           </div>
         </div>

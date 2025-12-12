@@ -242,7 +242,6 @@ export default function Index() {
               <p className="text-xs text-muted-foreground/70">
                 A <span className="font-semibold text-blue-500">LabLink Solution</span> by{" "}
                 <span className="font-semibold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">Alphax Heros</span>
-                <span className="text-muted-foreground/50"> (Santhakumar K)</span>
               </p>
             </div>
           </div>
