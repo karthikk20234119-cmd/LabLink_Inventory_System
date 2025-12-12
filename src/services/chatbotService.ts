@@ -1,14 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 
 // OpenRouter API configuration
-const OPENROUTER_API_KEY = "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";
+// OpenRouter API configuration
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "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";
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
-// Free models with fallback
+// Free models with fallback - Updated list
 const FREE_MODELS = [
-  "tngtech/deepseek-r1t2-chimera:free",
+  "google/gemini-2.0-flash-exp:free",
+  "google/gemini-2.0-flash-thinking-exp:free",
   "google/gemma-2-9b-it:free",
-  "meta-llama/llama-3.2-1b-instruct:free"
+  "meta-llama/llama-3.2-1b-instruct:free",
+  "microsoft/phi-3-mini-128k-instruct:free"
 ];
 
 export interface ChatMessage {
@@ -163,8 +166,19 @@ export async function sendChatMessage(
     ...recentMessages.map(m => ({ role: m.role, content: m.content }))
   ];
 
+  console.log("Sending request to OpenRouter with models:", FREE_MODELS);
+  
+  // Check if key is configured
+  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.includes("placeholder")) {
+    console.error("OpenRouter API Key is missing or invalid");
+    return "Configuration Error: OpenRouter API Key is missing. Please add VITE_OPENROUTER_API_KEY to your environment variables.";
+  }
+
+  let lastError = "";
+
   for (const model of FREE_MODELS) {
     try {
+      console.log(`Trying model: ${model}`);
       const response = await fetch(OPENROUTER_ENDPOINT, {
         method: "POST",
         headers: {
@@ -176,7 +190,7 @@ export async function sendChatMessage(
         body: JSON.stringify({
           model: model,
           messages: apiMessages,
-          max_tokens: 1200, // Higher limit for complete responses
+          max_tokens: 1200,
           temperature: 0.4,
           top_p: 0.9,
         })
@@ -185,17 +199,31 @@ export async function sendChatMessage(
       if (response.ok) {
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content;
-        if (content && content.length > 20) {
+        if (content && content.length > 5) {
+          console.log(`Success with model: ${model}`);
           return content;
         }
+      } else {
+        const errorText = await response.text();
+        console.warn(`Model ${model} failed with status ${response.status}: ${errorText}`);
+        
+        // Capture specific errors to report to user if all fail
+        if (response.status === 401) {
+          lastError = "Authentication failed. Please check your VITE_OPENROUTER_API_KEY.";
+        } else if (response.status === 429) {
+          lastError = "Rate limit exceeded. Please try again later.";
+        } else if (response.status === 402) {
+          lastError = "Insufficient credits in OpenRouter account.";
+        }
       }
-      console.log(`Model ${model} failed, trying next...`);
     } catch (err) {
-      console.log(`Model ${model} error:`, err);
+      console.warn(`Model ${model} error:`, err);
+      if (!lastError) lastError = "Network connection error.";
     }
   }
 
-  return "I'm temporarily unable to respond. Please try again.";
+  console.error("All models failed to respond.");
+  return lastError || "I'm temporarily unable to respond due to high traffic or configuration issues. Please check the browser console for details.";
 }
 
 // Off-topic detection

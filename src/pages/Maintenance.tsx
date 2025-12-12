@@ -359,39 +359,39 @@ export default function Maintenance() {
     <DashboardLayout title="Maintenance" subtitle="Track equipment maintenance and repairs">
       <div className="space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Records</CardDescription>
-              <CardTitle className="text-2xl">{records.length}</CardTitle>
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Total</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl">{records.length}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Pending</CardDescription>
-              <CardTitle className="text-2xl text-warning">{pendingCount}</CardTitle>
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Pending</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl text-warning">{pendingCount}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>In Progress</CardDescription>
-              <CardTitle className="text-2xl text-info">{inProgressCount}</CardTitle>
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">In Progress</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl text-info">{inProgressCount}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Completed</CardDescription>
-              <CardTitle className="text-2xl text-success">{completedCount}</CardTitle>
+            <CardHeader className="p-3 sm:pb-2 sm:pt-4">
+              <CardDescription className="text-xs sm:text-sm">Completed</CardDescription>
+              <CardTitle className="text-xl sm:text-2xl text-success">{completedCount}</CardTitle>
             </CardHeader>
           </Card>
         </div>
 
         {/* Search and Add */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+          <div className="relative flex-1 sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by item or reason..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -400,14 +400,14 @@ export default function Maintenance() {
           <div className="flex gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={isExporting || filteredRecords.length === 0}>
+                <Button variant="outline" size="sm" disabled={isExporting || filteredRecords.length === 0} className="h-10">
                   {isExporting ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Download className="h-4 w-4 mr-2" />
+                    <Download className="h-4 w-4" />
                   )}
-                  Export
-                  <ChevronDown className="h-4 w-4 ml-2" />
+                  <span className="hidden sm:inline ml-2">Export</span>
+                  <ChevronDown className="h-4 w-4 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -421,19 +421,19 @@ export default function Maintenance() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Record
+            <Button onClick={() => { resetForm(); setDialogOpen(true); }} size="sm" className="h-10">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Add Record</span>
             </Button>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="in_progress">In Progress ({inProgressCount})</TabsTrigger>
-            <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="all">All</TabsTrigger>
+          <TabsList className="flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="in_progress" className="text-xs sm:text-sm px-2 sm:px-3">In Progress ({inProgressCount})</TabsTrigger>
+            <TabsTrigger value="pending" className="text-xs sm:text-sm px-2 sm:px-3">Pending ({pendingCount})</TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs sm:text-sm px-2 sm:px-3">Done</TabsTrigger>
+            <TabsTrigger value="all" className="text-xs sm:text-sm px-2 sm:px-3">All</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-4">
@@ -461,10 +461,10 @@ export default function Maintenance() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Item</TableHead>
-                        <TableHead>Reason</TableHead>
-                        <TableHead>Assigned To</TableHead>
-                        <TableHead>Timeline</TableHead>
-                        <TableHead>Cost</TableHead>
+                        <TableHead className="hidden md:table-cell">Reason</TableHead>
+                        <TableHead className="hidden lg:table-cell">Assigned</TableHead>
+                        <TableHead className="hidden sm:table-cell">Timeline</TableHead>
+                        <TableHead className="hidden lg:table-cell">Cost</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -474,33 +474,33 @@ export default function Maintenance() {
                         <TableRow key={rec.id}>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{rec.item?.name || "Unknown"}</p>
+                              <p className="font-medium text-sm">{rec.item?.name || "Unknown"}</p>
                               <p className="text-xs text-muted-foreground font-mono">{rec.item?.item_code}</p>
+                              <p className="text-xs text-muted-foreground md:hidden truncate max-w-[120px]">{rec.reason || "—"}</p>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <p className="max-w-[200px] truncate">{rec.reason || "—"}</p>
+                          <TableCell className="hidden md:table-cell">
+                            <p className="max-w-[200px] truncate text-sm">{rec.reason || "—"}</p>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             {rec.technician ? (
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">{rec.technician.full_name}</span>
                               </div>
                             ) : (
-                              <span className="text-muted-foreground">Unassigned</span>
+                              <span className="text-muted-foreground text-sm">Unassigned</span>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 text-sm">
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="flex items-center gap-1 text-xs sm:text-sm">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              {rec.start_date ? format(new Date(rec.start_date), "MMM d") : "Not started"}
-                              {rec.estimated_completion && ` → ${format(new Date(rec.estimated_completion), "MMM d")}`}
+                              {rec.start_date ? format(new Date(rec.start_date), "MMM d") : "—"}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             {rec.cost ? (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 text-sm">
                                 <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                                 ₹{rec.cost.toLocaleString()}
                               </div>
@@ -510,29 +510,33 @@ export default function Maintenance() {
                           </TableCell>
                           <TableCell>{getStatusBadge(rec.status)}</TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-1">
                               {rec.status === "pending" && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
+                                  className="h-8 px-2"
                                   onClick={() => updateStatus(rec.id, "in_progress")}
                                 >
-                                  Start
+                                  <span className="hidden sm:inline">Start</span>
+                                  <Wrench className="h-4 w-4 sm:hidden" />
                                 </Button>
                               )}
                               {rec.status === "in_progress" && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
+                                  className="h-8 px-2"
                                   onClick={() => updateStatus(rec.id, "completed")}
                                 >
-                                  Complete
+                                  <span className="hidden sm:inline">Done</span>
+                                  <CheckCircle className="h-4 w-4 sm:hidden" />
                                 </Button>
                               )}
-                              <Button variant="ghost" size="icon" onClick={() => handleEdit(rec)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(rec)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(rec.id)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(rec.id)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>

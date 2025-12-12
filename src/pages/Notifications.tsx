@@ -113,15 +113,15 @@ export default function Notifications() {
     <DashboardLayout title="Notifications" subtitle="View all your notifications">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header Actions */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary">{notifications.length} total</Badge>
             {unreadCount > 0 && (
               <Badge className="bg-primary">{unreadCount} unread</Badge>
             )}
           </div>
           {unreadCount > 0 && (
-            <Button variant="outline" size="sm" onClick={markAllAsRead}>
+            <Button variant="outline" size="sm" onClick={markAllAsRead} className="w-full sm:w-auto">
               <Check className="h-4 w-4 mr-2" />
               Mark all as read
             </Button>

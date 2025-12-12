@@ -298,18 +298,18 @@ export default function ItemFormPage() {
           Back to Inventory
         </Button>
 
-        {/* Progress Steps - Horizontal Pills */}
-        <div className="flex items-center justify-center gap-1 p-2 bg-card rounded-xl border">
+        {/* Progress Steps - Horizontal Pills (Scrollable on Mobile) */}
+        <div className="flex items-center justify-start sm:justify-center gap-1 p-2 bg-card rounded-xl border overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {steps.map((step, idx) => {
             const isCompleted = currentStep > step.num;
             const isCurrent = currentStep === step.num;
             
             return (
-              <div key={step.num} className="flex items-center">
+              <div key={step.num} className="flex items-center flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(step.num)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-all flex-shrink-0 ${
                     isCurrent
                       ? "bg-primary text-primary-foreground shadow-lg"
                       : isCompleted
@@ -317,19 +317,19 @@ export default function ItemFormPage() {
                       : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                  <div className={`flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full text-xs font-bold ${
                     isCurrent
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : isCompleted
                       ? "bg-green-500 text-white"
                       : "bg-muted-foreground/20"
                   }`}>
-                    {isCompleted ? <CheckCircle className="h-4 w-4" /> : step.num}
+                    {isCompleted ? <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" /> : step.num}
                   </div>
                   <span className="hidden sm:inline">{step.title}</span>
                 </button>
                 {idx < steps.length - 1 && (
-                  <div className={`w-6 h-0.5 mx-1 ${isCompleted ? "bg-green-500" : "bg-border"}`} />
+                  <div className={`w-4 sm:w-6 h-0.5 mx-0.5 sm:mx-1 flex-shrink-0 ${isCompleted ? "bg-green-500" : "bg-border"}`} />
                 )}
               </div>
             );

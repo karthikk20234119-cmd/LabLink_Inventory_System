@@ -125,8 +125,8 @@ export default function BrowseItems() {
     <DashboardLayout title="Browse Items" subtitle="Explore available lab equipment and materials">
       <div className="space-y-6">
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search items..."
@@ -137,7 +137,7 @@ export default function BrowseItems() {
           </div>
           <div className="flex gap-2">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="flex-1 sm:w-[160px] sm:flex-none">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -190,7 +190,7 @@ export default function BrowseItems() {
             </p>
           </div>
         ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {filteredItems.map((item) => (
               <Card key={item.id} className="hover:shadow-lg transition-all cursor-pointer group" onClick={() => navigate(`/items/${item.id}`)}>
                 <div className="aspect-square bg-muted relative overflow-hidden rounded-t-lg">
@@ -202,28 +202,28 @@ export default function BrowseItems() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-16 w-16 text-muted-foreground/30" />
+                      <Package className="h-10 w-10 sm:h-16 sm:w-16 text-muted-foreground/30" />
                     </div>
                   )}
                   <div className="absolute top-2 right-2">
                     {getStatusBadge(item.status)}
                   </div>
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold truncate">{item.name}</h3>
-                  <p className="text-xs text-muted-foreground font-mono">{item.item_code}</p>
-                  <div className="flex items-center justify-between mt-3">
-                    <Badge variant="outline" className={getConditionColor(item.condition)}>
+                <CardContent className="p-3 sm:p-4">
+                  <h3 className="font-semibold truncate text-sm sm:text-base">{item.name}</h3>
+                  <p className="text-xs text-muted-foreground font-mono truncate">{item.item_code}</p>
+                  <div className="flex items-center justify-between mt-2 sm:mt-3">
+                    <Badge variant="outline" className={`${getConditionColor(item.condition)} text-xs`}>
                       {item.condition}
                     </Badge>
-                    <span className="text-sm font-medium">Qty: {item.current_quantity}</span>
+                    <span className="text-xs sm:text-sm font-medium">Qty: {item.current_quantity}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center justify-between mt-2 gap-1">
                     {item.category?.name && (
-                      <p className="text-xs text-muted-foreground">{item.category.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.category.name}</p>
                     )}
                     {item.is_borrowable && (
-                      <Badge variant="outline" className="text-xs border-blue-500 text-blue-600">Borrowable</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs border-blue-500 text-blue-600 whitespace-nowrap">Borrow</Badge>
                     )}
                   </div>
                 </CardContent>
