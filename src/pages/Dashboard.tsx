@@ -46,47 +46,47 @@ export default function Dashboard() {
       <div className="space-y-8 pb-8">
         
         {/* Welcome Header - Professional Clean Design */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 pt-2">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-4 pb-4 pt-2">
+          <div className="flex items-center gap-3 sm:gap-4">
             {/* Professional Avatar */}
-            <div className="relative">
-              <div className="h-14 w-14 rounded-full bg-blue-600 shadow-md flex items-center justify-center">
-                <span className="text-white text-lg font-bold">{userInitials}</span>
+            <div className="relative flex-shrink-0">
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-blue-600 shadow-md flex items-center justify-center">
+                <span className="text-white text-base sm:text-lg font-bold">{userInitials}</span>
               </div>
-              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 bg-emerald-500 rounded-full ring-2 ring-white"></span>
+              <span className="absolute bottom-0 right-0 h-3 w-3 sm:h-3.5 sm:w-3.5 bg-emerald-500 rounded-full ring-2 ring-white"></span>
             </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground truncate">
                 Welcome back, {userName}!
               </h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-xs sm:text-sm truncate">
                 Here's what's happening in your lab today
               </p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <Button 
-              size="default"
-              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl h-11 px-5 shadow-lg shadow-blue-500/30 transition-all hover:shadow-xl hover:shadow-blue-500/40"
+              size="sm"
+              className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl h-10 sm:h-11 px-3 sm:px-5 shadow-lg shadow-blue-500/30 transition-all hover:shadow-xl hover:shadow-blue-500/40 text-xs sm:text-sm"
               onClick={() => navigate("/items/new")}
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-1.5 sm:mr-2" />
               Add Item
             </Button>
             <Button 
-              size="default"
+              size="sm"
               variant="outline"
-              className="rounded-xl h-11 px-5 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:border-gray-700 dark:hover:bg-gray-800"
+              className="flex-1 sm:flex-none rounded-xl h-10 sm:h-11 px-3 sm:px-5 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:border-gray-700 dark:hover:bg-gray-800 text-xs sm:text-sm"
               onClick={() => navigate("/scan")}
             >
-              <QrCode className="h-4 w-4 mr-2" />
+              <QrCode className="h-4 w-4 mr-1.5 sm:mr-2" />
               Scan QR
             </Button>
           </div>
         </div>
 
         {/* Stats Grid - Primary Row */}
-        <div className="grid gap-5 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 md:gap-5 grid-cols-2 md:grid-cols-4">
           <StatsCard
             title="Total Items"
             value={stats.totalItems}
@@ -127,7 +127,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid - Secondary Row */}
-        <div className="grid gap-5 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 md:gap-5 grid-cols-2 md:grid-cols-4">
           {["admin", "staff"].includes(userRole || "") && (
             <StatsCard
               title="Pending Requests"
@@ -183,7 +183,7 @@ export default function Dashboard() {
         />
 
         {/* Bottom Section */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           
           {/* Top Borrowed Items */}
           <div className="dashboard-card animate-fade-in-up" style={{ animationDelay: '0.3s' }}>

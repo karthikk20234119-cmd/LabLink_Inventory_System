@@ -116,7 +116,7 @@
 
   /* Stat card with gradient background */
   .stat-card {
-    @apply floating-card p-5 relative overflow-hidden cursor-pointer;
+    @apply floating-card p-3 sm:p-4 md:p-5 relative overflow-hidden cursor-pointer;
   }
 
   .stat-card::before {
