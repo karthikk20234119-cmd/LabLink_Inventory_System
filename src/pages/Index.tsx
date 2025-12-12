@@ -61,17 +61,20 @@ export default function Index() {
       {/* Navigation */}
       <nav className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden shadow-lg shadow-blue-500/30">
-              <img 
-                src="/lablink-logo.jpg" 
-                alt="LabLink" 
-                className="h-full w-full object-cover"
-              />
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="relative">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 rounded-xl opacity-75 group-hover:opacity-100 blur-sm transition-opacity"></div>
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden bg-white">
+                <img 
+                  src="/lablink-logo.jpg" 
+                  alt="LabLink" 
+                  className="h-full w-full object-cover"
+                />
+              </div>
             </div>
             <div className="flex flex-col">
-              <span className="font-display text-xl font-bold">LabLink</span>
-              <span className="text-[10px] text-blue-500 -mt-1 tracking-wider">LAB SMART</span>
+              <span className="font-display text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">LabLink</span>
+              <span className="text-[10px] text-blue-500 -mt-1 tracking-wider font-medium">LAB SMART</span>
             </div>
           </Link>
           <div className="flex items-center gap-4">
@@ -202,25 +205,46 @@ export default function Index() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12">
+      <footer className="border-t border-border bg-gradient-to-b from-background to-muted/30 py-12">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden shadow-md">
-                <img 
-                  src="/lablink-logo.jpg" 
-                  alt="LabLink" 
-                  className="h-full w-full object-cover"
-                />
+          <div className="flex flex-col items-center gap-8">
+            {/* Logo and Company Info */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-600 rounded-xl opacity-60 blur-sm"></div>
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden bg-white shadow-lg">
+                    <img 
+                      src="/lablink-logo.jpg" 
+                      alt="LabLink" 
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-display text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">LabLink</span>
+                  <span className="text-xs text-blue-500 -mt-0.5 tracking-wider font-medium">LAB SMART</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="font-display font-bold">LabLink</span>
-                <span className="text-[9px] text-blue-500 -mt-0.5 tracking-wider">LAB SMART</span>
-              </div>
+              <p className="text-center text-sm text-muted-foreground max-w-md">
+                Enterprise Lab Management Solution - Streamlining laboratory operations with cutting-edge technology.
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              © 2025 LabLink. Enterprise Lab Management Solution. All rights reserved.
-            </p>
+            
+            {/* Divider */}
+            <div className="w-full max-w-xs h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+            
+            {/* Copyright and Credits */}
+            <div className="flex flex-col items-center gap-2 text-center">
+              <p className="text-sm text-muted-foreground">
+                © 2025 LabLink. All rights reserved.
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                A <span className="font-semibold text-blue-500">LabLink Solution</span> by{" "}
+                <span className="font-semibold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">Alphax Heros</span>
+                <span className="text-muted-foreground/50"> (Santhakumar K)</span>
+              </p>
+            </div>
           </div>
         </div>
       </footer>

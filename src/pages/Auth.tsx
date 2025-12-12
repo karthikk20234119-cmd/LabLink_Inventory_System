@@ -566,9 +566,16 @@ export default function Auth() {
             </div>
           </div>
 
-          <p className="text-sm text-secondary-foreground/50">
-            © 2025 LabLink. Enterprise Lab Management Solution.
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-secondary-foreground/50">
+              © 2025 LabLink. Enterprise Lab Management Solution.
+            </p>
+            <p className="text-xs text-secondary-foreground/40">
+              A <span className="text-blue-400">LabLink Solution</span> by{" "}
+              <span className="text-orange-400">Alphax Heros</span>
+              <span className="text-secondary-foreground/30"> (Santhakumar K)</span>
+            </p>
+          </div>
         </div>
 
         {/* Right Panel - Auth Form */}
