@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -11,19 +17,21 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Settings as SettingsIcon, 
-  User, 
-  Bell, 
-  Shield, 
-  Save, 
-  Loader2, 
-  Sliders, 
+import {
+  Settings as SettingsIcon,
+  User,
+  Bell,
+  Shield,
+  Save,
+  Loader2,
+  Sliders,
   Database,
   CheckCircle,
   Upload,
-  Camera
+  Camera,
+  Globe,
 } from "lucide-react";
+import { SSODomainSettings } from "@/components/settings/SSODomainSettings";
 
 interface UserSettings {
   email_notifications: boolean;
@@ -47,7 +55,7 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingNotifications, setIsSavingNotifications] = useState(false);
   const [isSavingSystem, setIsSavingSystem] = useState(false);
-  
+
   const [profile, setProfile] = useState({
     full_name: "",
     email: "",
@@ -149,7 +157,8 @@ export default function Settings() {
           settings[s.key] = s.value;
         });
         setSystemSettings({
-          default_borrow_duration_days: settings.default_borrow_duration_days || "7",
+          default_borrow_duration_days:
+            settings.default_borrow_duration_days || "7",
           low_stock_threshold: settings.low_stock_threshold || "5",
           system_name: settings.system_name || "LabLink",
           allow_student_requests: settings.allow_student_requests || "true",
@@ -166,7 +175,7 @@ export default function Settings() {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ 
+        .update({
           full_name: profile.full_name,
           phone: profile.phone,
         })
@@ -189,16 +198,17 @@ export default function Settings() {
     if (!user) return;
     setIsSavingNotifications(true);
     try {
-      const { error } = await supabase
-        .from("user_settings")
-        .upsert({
-          id: user.id,
-          ...userSettings,
-          updated_at: new Date().toISOString(),
-        });
+      const { error } = await supabase.from("user_settings").upsert({
+        id: user.id,
+        ...userSettings,
+        updated_at: new Date().toISOString(),
+      });
 
       if (error) throw error;
-      toast({ title: "Success", description: "Notification preferences saved" });
+      toast({
+        title: "Success",
+        description: "Notification preferences saved",
+      });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -224,7 +234,11 @@ export default function Settings() {
       for (const update of updates) {
         const { error } = await supabase
           .from("system_settings")
-          .update({ value: update.value, updated_by: update.updated_by, updated_at: update.updated_at })
+          .update({
+            value: update.value,
+            updated_by: update.updated_by,
+            updated_at: update.updated_at,
+          })
           .eq("key", update.key);
         if (error) throw error;
       }
@@ -267,7 +281,7 @@ export default function Settings() {
       });
 
       if (error) throw error;
-      
+
       toast({ title: "Success", description: "Password updated successfully" });
       setPasswords({ current: "", new: "", confirm: "" });
     } catch (error: any) {
@@ -282,7 +296,10 @@ export default function Settings() {
   };
 
   return (
-    <DashboardLayout title="Settings" subtitle="Manage your account and preferences">
+    <DashboardLayout
+      title="Settings"
+      subtitle="Manage your account and preferences"
+    >
       <div className="max-w-4xl">
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
@@ -299,10 +316,16 @@ export default function Settings() {
               <span className="hidden sm:inline">Security</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="system" className="gap-2">
-                <Sliders className="h-4 w-4" />
-                <span className="hidden sm:inline">System</span>
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="system" className="gap-2">
+                  <Sliders className="h-4 w-4" />
+                  <span className="hidden sm:inline">System</span>
+                </TabsTrigger>
+                <TabsTrigger value="sso" className="gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span className="hidden sm:inline">SSO</span>
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -314,27 +337,37 @@ export default function Settings() {
                   <User className="h-5 w-5 text-primary" />
                   Profile Information
                 </CardTitle>
-                <CardDescription>Update your personal information</CardDescription>
+                <CardDescription>
+                  Update your personal information
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Avatar Section */}
                 <div className="flex items-center gap-6">
                   <div className="relative">
                     <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                      {profile.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U"}
+                      {profile.full_name?.charAt(0)?.toUpperCase() ||
+                        user?.email?.charAt(0)?.toUpperCase() ||
+                        "U"}
                     </div>
-                    <Button 
-                      size="icon" 
-                      variant="secondary" 
+                    <Button
+                      size="icon"
+                      variant="secondary"
                       className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full shadow-md"
                     >
                       <Camera className="h-4 w-4" />
                     </Button>
                   </div>
                   <div>
-                    <h3 className="font-semibold">{profile.full_name || "Your Name"}</h3>
-                    <p className="text-sm text-muted-foreground">{profile.email}</p>
-                    <Badge variant="outline" className="mt-1 capitalize">{userRole}</Badge>
+                    <h3 className="font-semibold">
+                      {profile.full_name || "Your Name"}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {profile.email}
+                    </p>
+                    <Badge variant="outline" className="mt-1 capitalize">
+                      {userRole}
+                    </Badge>
                   </div>
                 </div>
 
@@ -346,7 +379,9 @@ export default function Settings() {
                     <Input
                       id="name"
                       value={profile.full_name}
-                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                      onChange={(e) =>
+                        setProfile({ ...profile, full_name: e.target.value })
+                      }
                       placeholder="Enter your name"
                     />
                   </div>
@@ -355,7 +390,9 @@ export default function Settings() {
                     <Input
                       id="phone"
                       value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                      onChange={(e) =>
+                        setProfile({ ...profile, phone: e.target.value })
+                      }
                       placeholder="+91 XXXXX XXXXX"
                     />
                   </div>
@@ -369,7 +406,9 @@ export default function Settings() {
                     disabled
                     className="bg-muted"
                   />
-                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                  <p className="text-xs text-muted-foreground">
+                    Email cannot be changed
+                  </p>
                 </div>
 
                 <Button onClick={handleSaveProfile} disabled={isSaving}>
@@ -397,59 +436,85 @@ export default function Settings() {
                   <Bell className="h-5 w-5 text-primary" />
                   Notification Preferences
                 </CardTitle>
-                <CardDescription>Configure how you receive notifications. Changes are saved to your account.</CardDescription>
+                <CardDescription>
+                  Configure how you receive notifications. Changes are saved to
+                  your account.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div>
                     <p className="font-medium">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications via email
+                    </p>
                   </div>
                   <Switch
                     checked={userSettings.email_notifications}
-                    onCheckedChange={(checked) => 
-                      setUserSettings({ ...userSettings, email_notifications: checked })
+                    onCheckedChange={(checked) =>
+                      setUserSettings({
+                        ...userSettings,
+                        email_notifications: checked,
+                      })
                     }
                   />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div>
                     <p className="font-medium">Request Alerts</p>
-                    <p className="text-sm text-muted-foreground">Get notified about borrow requests</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get notified about borrow requests
+                    </p>
                   </div>
                   <Switch
                     checked={userSettings.request_alerts}
-                    onCheckedChange={(checked) => 
-                      setUserSettings({ ...userSettings, request_alerts: checked })
+                    onCheckedChange={(checked) =>
+                      setUserSettings({
+                        ...userSettings,
+                        request_alerts: checked,
+                      })
                     }
                   />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div>
                     <p className="font-medium">Maintenance Alerts</p>
-                    <p className="text-sm text-muted-foreground">Get notified about maintenance updates</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get notified about maintenance updates
+                    </p>
                   </div>
                   <Switch
                     checked={userSettings.maintenance_alerts}
-                    onCheckedChange={(checked) => 
-                      setUserSettings({ ...userSettings, maintenance_alerts: checked })
+                    onCheckedChange={(checked) =>
+                      setUserSettings({
+                        ...userSettings,
+                        maintenance_alerts: checked,
+                      })
                     }
                   />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div>
                     <p className="font-medium">Low Stock Alerts</p>
-                    <p className="text-sm text-muted-foreground">Get notified when items are running low</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get notified when items are running low
+                    </p>
                   </div>
                   <Switch
                     checked={userSettings.low_stock_alerts}
-                    onCheckedChange={(checked) => 
-                      setUserSettings({ ...userSettings, low_stock_alerts: checked })
+                    onCheckedChange={(checked) =>
+                      setUserSettings({
+                        ...userSettings,
+                        low_stock_alerts: checked,
+                      })
                     }
                   />
                 </div>
 
-                <Button onClick={handleSaveNotifications} disabled={isSavingNotifications}>
+                <Button
+                  onClick={handleSaveNotifications}
+                  disabled={isSavingNotifications}
+                >
                   {isSavingNotifications ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -474,7 +539,9 @@ export default function Settings() {
                   <Shield className="h-5 w-5 text-primary" />
                   Security Settings
                 </CardTitle>
-                <CardDescription>Manage your password and security preferences</CardDescription>
+                <CardDescription>
+                  Manage your password and security preferences
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
@@ -484,22 +551,31 @@ export default function Settings() {
                       id="newPassword"
                       type="password"
                       value={passwords.new}
-                      onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                      onChange={(e) =>
+                        setPasswords({ ...passwords, new: e.target.value })
+                      }
                       placeholder="Enter new password"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword">
+                      Confirm New Password
+                    </Label>
                     <Input
                       id="confirmPassword"
                       type="password"
                       value={passwords.confirm}
-                      onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                      onChange={(e) =>
+                        setPasswords({ ...passwords, confirm: e.target.value })
+                      }
                       placeholder="Confirm new password"
                     />
                   </div>
                 </div>
-                <Button onClick={handleChangePassword} disabled={isSaving || !passwords.new}>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={isSaving || !passwords.new}
+                >
                   {isSaving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -526,7 +602,9 @@ export default function Settings() {
                     System Settings
                     <Badge className="ml-2">Admin Only</Badge>
                   </CardTitle>
-                  <CardDescription>Configure global system settings</CardDescription>
+                  <CardDescription>
+                    Configure global system settings
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -535,22 +613,38 @@ export default function Settings() {
                       <Input
                         id="systemName"
                         value={systemSettings.system_name}
-                        onChange={(e) => setSystemSettings({ ...systemSettings, system_name: e.target.value })}
+                        onChange={(e) =>
+                          setSystemSettings({
+                            ...systemSettings,
+                            system_name: e.target.value,
+                          })
+                        }
                         placeholder="LabLink"
                       />
-                      <p className="text-xs text-muted-foreground">Display name for the system</p>
+                      <p className="text-xs text-muted-foreground">
+                        Display name for the system
+                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="borrowDuration">Default Borrow Duration (days)</Label>
+                      <Label htmlFor="borrowDuration">
+                        Default Borrow Duration (days)
+                      </Label>
                       <Input
                         id="borrowDuration"
                         type="number"
                         min="1"
                         max="90"
                         value={systemSettings.default_borrow_duration_days}
-                        onChange={(e) => setSystemSettings({ ...systemSettings, default_borrow_duration_days: e.target.value })}
+                        onChange={(e) =>
+                          setSystemSettings({
+                            ...systemSettings,
+                            default_borrow_duration_days: e.target.value,
+                          })
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">Default duration for borrow requests</p>
+                      <p className="text-xs text-muted-foreground">
+                        Default duration for borrow requests
+                      </p>
                     </div>
                   </div>
 
@@ -563,30 +657,51 @@ export default function Settings() {
                         min="1"
                         max="100"
                         value={systemSettings.low_stock_threshold}
-                        onChange={(e) => setSystemSettings({ ...systemSettings, low_stock_threshold: e.target.value })}
+                        onChange={(e) =>
+                          setSystemSettings({
+                            ...systemSettings,
+                            low_stock_threshold: e.target.value,
+                          })
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">Alert when items fall below this count</p>
+                      <p className="text-xs text-muted-foreground">
+                        Alert when items fall below this count
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Allow Student Requests</Label>
                       <div className="flex items-center gap-4 pt-2">
                         <Switch
-                          checked={systemSettings.allow_student_requests === "true"}
-                          onCheckedChange={(checked) => 
-                            setSystemSettings({ ...systemSettings, allow_student_requests: checked ? "true" : "false" })
+                          checked={
+                            systemSettings.allow_student_requests === "true"
+                          }
+                          onCheckedChange={(checked) =>
+                            setSystemSettings({
+                              ...systemSettings,
+                              allow_student_requests: checked
+                                ? "true"
+                                : "false",
+                            })
                           }
                         />
                         <span className="text-sm text-muted-foreground">
-                          {systemSettings.allow_student_requests === "true" ? "Enabled" : "Disabled"}
+                          {systemSettings.allow_student_requests === "true"
+                            ? "Enabled"
+                            : "Disabled"}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground">Allow students to create borrow requests</p>
+                      <p className="text-xs text-muted-foreground">
+                        Allow students to create borrow requests
+                      </p>
                     </div>
                   </div>
 
                   <Separator />
 
-                  <Button onClick={handleSaveSystemSettings} disabled={isSavingSystem}>
+                  <Button
+                    onClick={handleSaveSystemSettings}
+                    disabled={isSavingSystem}
+                  >
                     {isSavingSystem ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -601,6 +716,13 @@ export default function Settings() {
                   </Button>
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {/* SSO Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="sso">
+              <SSODomainSettings />
             </TabsContent>
           )}
         </Tabs>

@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,12 +46,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { BorrowStatusBadge } from "@/components/borrow/BorrowStatusBadge";
 import { ReturnRequestDialog } from "@/components/borrow/ReturnRequestDialog";
-import { 
-  ClipboardList, 
-  Plus, 
-  Calendar, 
-  Package, 
-  Loader2, 
+import {
+  ClipboardList,
+  Plus,
+  Calendar,
+  Package,
+  Loader2,
   Search,
   RotateCcw,
   MessageSquare,
@@ -54,10 +60,14 @@ import {
   Download,
   FileText,
   FileSpreadsheet,
-  ChevronDown
+  ChevronDown,
 } from "lucide-react";
 import { format, formatDistanceToNow, addDays } from "date-fns";
-import { generateStudentHistoryPDF, generateStudentHistoryExcel, BorrowReportRow } from "@/lib/reportExports";
+import {
+  generateStudentHistoryPDF,
+  generateStudentHistoryExcel,
+  BorrowReportRow,
+} from "@/lib/reportExports";
 
 interface BorrowRequest {
   id: string;
@@ -95,6 +105,10 @@ const defaultFormData = {
   purpose: "",
 };
 
+/** Students can borrow at most half the current stock */
+const getMaxBorrowable = (currentQty: number) =>
+  Math.max(1, Math.floor(currentQty / 2));
+
 export default function MyRequests() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -107,7 +121,9 @@ export default function MyRequests() {
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [formData, setFormData] = useState(defaultFormData);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRequest, setSelectedRequest] = useState<BorrowRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<BorrowRequest | null>(
+    null,
+  );
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
@@ -123,10 +139,12 @@ export default function MyRequests() {
     try {
       const { data, error } = await supabase
         .from("borrow_requests")
-        .select(`
+        .select(
+          `
           *,
           item:items(name, item_code, image_url)
-        `)
+        `,
+        )
         .eq("student_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -170,31 +188,62 @@ export default function MyRequests() {
 
   const handleSubmit = async () => {
     if (!formData.item_id) {
-      toast({ variant: "destructive", title: "Error", description: "Please select an item" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select an item",
+      });
       return;
     }
     if (!formData.requested_start_date || !formData.requested_end_date) {
-      toast({ variant: "destructive", title: "Error", description: "Please select dates" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select dates",
+      });
       return;
+    }
+
+    // Validate quantity against half-stock limit
+    const selItem = items.find((i) => i.id === formData.item_id);
+    if (selItem) {
+      const maxAllowed = getMaxBorrowable(selItem.current_quantity);
+      if (formData.quantity > maxAllowed) {
+        toast({
+          variant: "destructive",
+          title: "Quantity Exceeds Limit",
+          description: `You can borrow a maximum of ${maxAllowed} (half of ${selItem.current_quantity} in stock).`,
+        });
+        return;
+      }
+      if (formData.quantity < 1) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Quantity must be at least 1",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("borrow_requests")
-        .insert({
-          student_id: user?.id,
-          item_id: formData.item_id,
-          requested_start_date: formData.requested_start_date,
-          requested_end_date: formData.requested_end_date,
-          quantity: formData.quantity,
-          purpose: formData.purpose || null,
-          status: "pending",
-        });
+      const { error } = await supabase.from("borrow_requests").insert({
+        student_id: user?.id,
+        item_id: formData.item_id,
+        requested_start_date: formData.requested_start_date,
+        requested_end_date: formData.requested_end_date,
+        quantity: formData.quantity,
+        purpose: formData.purpose || null,
+        status: "pending",
+      });
 
       if (error) throw error;
 
-      toast({ title: "Success", description: "Borrow request submitted successfully" });
+      toast({
+        title: "Success",
+        description: "Borrow request submitted successfully",
+      });
       setDialogOpen(false);
       fetchMyRequests();
     } catch (error: any) {
@@ -218,7 +267,7 @@ export default function MyRequests() {
     setDetailDialogOpen(true);
   };
 
-  const handleExport = async (exportType: 'pdf' | 'excel') => {
+  const handleExport = async (exportType: "pdf" | "excel") => {
     if (requests.length === 0) {
       toast({
         variant: "destructive",
@@ -231,32 +280,35 @@ export default function MyRequests() {
     setIsExporting(true);
     try {
       // Convert requests to BorrowReportRow format
-      const exportData: BorrowReportRow[] = requests.map(req => ({
+      const exportData: BorrowReportRow[] = requests.map((req) => ({
         id: req.id,
-        itemName: req.item?.name || 'Unknown',
-        itemCode: req.item?.item_code || '',
-        category: '', // Not needed for student export
-        department: '', // Not needed for student export
-        borrowerName: user?.user_metadata?.full_name || user?.email || '',
-        borrowerEmail: user?.email || '',
+        itemName: req.item?.name || "Unknown",
+        itemCode: req.item?.item_code || "",
+        category: "", // Not needed for student export
+        department: "", // Not needed for student export
+        borrowerName: user?.user_metadata?.full_name || user?.email || "",
+        borrowerEmail: user?.email || "",
         quantity: req.quantity || 1,
-        purpose: req.purpose || '',
+        purpose: req.purpose || "",
         requestDate: req.created_at,
         startDate: req.requested_start_date,
         endDate: req.requested_end_date,
         status: req.status,
-        approvedBy: '', // Excluded from student export
-        approvalDate: '', // Excluded from student export
-        pickupLocation: req.pickup_location || '',
-        returnDate: '', // Would need return records
-        receivedBy: '', // Excluded from student export
-        itemCondition: '',
-        conditionNotes: '',
+        approvedBy: "", // Excluded from student export
+        approvalDate: "", // Excluded from student export
+        pickupLocation: req.pickup_location || "",
+        returnDate: "", // Would need return records
+        receivedBy: "", // Excluded from student export
+        itemCondition: "",
+        conditionNotes: "",
       }));
 
-      const studentName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student';
+      const studentName =
+        user?.user_metadata?.full_name ||
+        user?.email?.split("@")[0] ||
+        "Student";
 
-      if (exportType === 'pdf') {
+      if (exportType === "pdf") {
         generateStudentHistoryPDF(exportData, studentName);
       } else {
         generateStudentHistoryExcel(exportData, studentName);
@@ -267,7 +319,7 @@ export default function MyRequests() {
         description: `Your borrow history has been exported as ${exportType.toUpperCase()}.`,
       });
     } catch (error) {
-      console.error('Export error:', error);
+      console.error("Export error:", error);
       toast({
         variant: "destructive",
         title: "Export failed",
@@ -278,18 +330,24 @@ export default function MyRequests() {
     }
   };
 
-  const filteredRequests = requests.filter(req =>
-    req.item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.purpose?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRequests = requests.filter(
+    (req) =>
+      req.item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      req.purpose?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const activeCount = requests.filter(r => ["pending", "approved", "return_pending"].includes(r.status)).length;
-  const completedCount = requests.filter(r => r.status === "returned").length;
+  const activeCount = requests.filter((r) =>
+    ["pending", "approved", "return_pending"].includes(r.status),
+  ).length;
+  const completedCount = requests.filter((r) => r.status === "returned").length;
 
-  const selectedItem = items.find(i => i.id === formData.item_id);
+  const selectedItem = items.find((i) => i.id === formData.item_id);
 
   return (
-    <DashboardLayout title="My Requests" subtitle="View and manage your borrow requests">
+    <DashboardLayout
+      title="My Requests"
+      subtitle="View and manage your borrow requests"
+    >
       <div className="space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -302,20 +360,24 @@ export default function MyRequests() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Active</CardDescription>
-              <CardTitle className="text-2xl text-info">{activeCount}</CardTitle>
+              <CardTitle className="text-2xl text-info">
+                {activeCount}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Completed</CardDescription>
-              <CardTitle className="text-2xl text-success">{completedCount}</CardTitle>
+              <CardTitle className="text-2xl text-success">
+                {completedCount}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Rejected</CardDescription>
               <CardTitle className="text-2xl text-destructive">
-                {requests.filter(r => r.status === "rejected").length}
+                {requests.filter((r) => r.status === "rejected").length}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -335,7 +397,10 @@ export default function MyRequests() {
           <div className="flex gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={isExporting || requests.length === 0}>
+                <Button
+                  variant="outline"
+                  disabled={isExporting || requests.length === 0}
+                >
                   {isExporting ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
@@ -346,17 +411,22 @@ export default function MyRequests() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
                   <FileText className="h-4 w-4 mr-2" />
                   Export as PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                <DropdownMenuItem onClick={() => handleExport("excel")}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Export as Excel
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+            <Button
+              onClick={() => {
+                resetForm();
+                setDialogOpen(true);
+              }}
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Request
             </Button>
@@ -371,7 +441,8 @@ export default function MyRequests() {
               Your Borrow Requests
             </CardTitle>
             <CardDescription>
-              {filteredRequests.length} request{filteredRequests.length !== 1 ? "s" : ""}
+              {filteredRequests.length} request
+              {filteredRequests.length !== 1 ? "s" : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -410,8 +481,12 @@ export default function MyRequests() {
                             <Package className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="font-medium">{req.item?.name || "Unknown"}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{req.item?.item_code}</p>
+                            <p className="font-medium">
+                              {req.item?.name || "Unknown"}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {req.item?.item_code}
+                            </p>
                           </div>
                         </div>
                       </TableCell>
@@ -421,7 +496,8 @@ export default function MyRequests() {
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          {format(new Date(req.requested_start_date), "MMM d")} - {format(new Date(req.requested_end_date), "MMM d")}
+                          {format(new Date(req.requested_start_date), "MMM d")}{" "}
+                          - {format(new Date(req.requested_end_date), "MMM d")}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -429,13 +505,17 @@ export default function MyRequests() {
                       </TableCell>
                       <TableCell>
                         <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(req.created_at), {
+                            addSuffix: true,
+                          })}
                         </p>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {/* View Details Button */}
-                          {(req.pickup_location || req.staff_message || req.conditions) && (
+                          {(req.pickup_location ||
+                            req.staff_message ||
+                            req.conditions) && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -444,7 +524,7 @@ export default function MyRequests() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           )}
-                          
+
                           {/* Submit Return Button */}
                           {req.status === "approved" && (
                             <Button
@@ -480,13 +560,15 @@ export default function MyRequests() {
               Request to borrow equipment from the lab
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="item">Item to Borrow *</Label>
               <Select
                 value={formData.item_id}
-                onValueChange={(value) => setFormData({ ...formData, item_id: value, quantity: 1 })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, item_id: value, quantity: 1 })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select an item" />
@@ -497,7 +579,9 @@ export default function MyRequests() {
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4 text-muted-foreground" />
                         <span>{item.name}</span>
-                        <span className="text-muted-foreground text-xs">({item.current_quantity} available)</span>
+                        <span className="text-muted-foreground text-xs">
+                          ({item.current_quantity} available)
+                        </span>
                       </div>
                     </SelectItem>
                   ))}
@@ -508,26 +592,37 @@ export default function MyRequests() {
             {/* Quantity */}
             {selectedItem && (
               <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity</Label>
+                <Label htmlFor="quantity">
+                  Quantity (max{" "}
+                  {getMaxBorrowable(selectedItem.current_quantity)} of{" "}
+                  {selectedItem.current_quantity} in stock)
+                </Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="quantity"
                     type="number"
                     min={1}
-                    max={selectedItem.current_quantity}
+                    max={getMaxBorrowable(selectedItem.current_quantity)}
                     value={formData.quantity}
                     onChange={(e) => {
                       const val = parseInt(e.target.value, 10);
-                      if (!isNaN(val) && val >= 1 && val <= selectedItem.current_quantity) {
+                      const maxQ = getMaxBorrowable(
+                        selectedItem.current_quantity,
+                      );
+                      if (!isNaN(val) && val >= 1 && val <= maxQ) {
                         setFormData({ ...formData, quantity: val });
                       }
                     }}
                     className="w-24"
                   />
                   <span className="text-sm text-muted-foreground">
-                    of {selectedItem.current_quantity} available
+                    of {getMaxBorrowable(selectedItem.current_quantity)}{" "}
+                    borrowable
                   </span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  You may borrow up to half of the current stock
+                </p>
               </div>
             )}
 
@@ -538,7 +633,12 @@ export default function MyRequests() {
                   id="start_date"
                   type="date"
                   value={formData.requested_start_date}
-                  onChange={(e) => setFormData({ ...formData, requested_start_date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      requested_start_date: e.target.value,
+                    })
+                  }
                   min={format(new Date(), "yyyy-MM-dd")}
                 />
               </div>
@@ -548,8 +648,16 @@ export default function MyRequests() {
                   id="end_date"
                   type="date"
                   value={formData.requested_end_date}
-                  onChange={(e) => setFormData({ ...formData, requested_end_date: e.target.value })}
-                  min={formData.requested_start_date || format(new Date(), "yyyy-MM-dd")}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      requested_end_date: e.target.value,
+                    })
+                  }
+                  min={
+                    formData.requested_start_date ||
+                    format(new Date(), "yyyy-MM-dd")
+                  }
                 />
               </div>
             </div>
@@ -559,7 +667,9 @@ export default function MyRequests() {
               <Textarea
                 id="purpose"
                 value={formData.purpose}
-                onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, purpose: e.target.value })
+                }
                 placeholder="e.g., For physics lab experiment on electromagnetism..."
                 className="min-h-[80px]"
               />
@@ -567,7 +677,11 @@ export default function MyRequests() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
@@ -595,11 +709,9 @@ export default function MyRequests() {
               <MessageSquare className="h-5 w-5 text-primary" />
               Request Details
             </DialogTitle>
-            <DialogDescription>
-              {selectedRequest?.item?.name}
-            </DialogDescription>
+            <DialogDescription>{selectedRequest?.item?.name}</DialogDescription>
           </DialogHeader>
-          
+
           {selectedRequest && (
             <div className="space-y-4 py-4">
               <div className="flex items-center gap-2">
@@ -611,9 +723,14 @@ export default function MyRequests() {
                 <div className="flex items-start gap-3 p-3 bg-success/5 border border-success/20 rounded-lg">
                   <Calendar className="h-5 w-5 text-success mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium">Collection Date & Time</p>
+                    <p className="text-sm font-medium">
+                      Collection Date & Time
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(selectedRequest.collection_datetime), "PPP 'at' p")}
+                      {format(
+                        new Date(selectedRequest.collection_datetime),
+                        "PPP 'at' p",
+                      )}
                     </p>
                   </div>
                 </div>
@@ -651,7 +768,9 @@ export default function MyRequests() {
 
               {selectedRequest.rejection_reason && (
                 <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-lg">
-                  <p className="text-sm font-medium text-destructive mb-1">Rejection Reason</p>
+                  <p className="text-sm font-medium text-destructive mb-1">
+                    Rejection Reason
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     {selectedRequest.rejection_reason}
                   </p>
@@ -661,7 +780,10 @@ export default function MyRequests() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDetailDialogOpen(false)}
+            >
               Close
             </Button>
           </DialogFooter>

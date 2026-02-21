@@ -1,5 +1,17 @@
 import { useState, useEffect } from "react";
-import { Bell, Search, Menu, X, Check, ExternalLink, Trash2, Info, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import {
+  Bell,
+  Search,
+  Menu,
+  X,
+  Check,
+  ExternalLink,
+  Trash2,
+  Info,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
+import { OfflineIndicator } from "@/components/layout/OfflineIndicator";
 
 interface Notification {
   id: string;
@@ -32,7 +45,12 @@ interface HeaderProps {
   isMenuOpen?: boolean;
 }
 
-export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps) {
+export function Header({
+  title,
+  subtitle,
+  onMenuClick,
+  isMenuOpen,
+}: HeaderProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -47,10 +65,15 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
         .channel("notifications")
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
           () => {
             fetchNotifications();
-          }
+          },
         )
         .subscribe();
 
@@ -72,7 +95,9 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
 
       if (error) throw error;
       setNotifications((data as Notification[]) || []);
-      setUnreadCount((data || []).filter((n: Notification) => !n.is_read).length);
+      setUnreadCount(
+        (data || []).filter((n: Notification) => !n.is_read).length,
+      );
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     }
@@ -144,19 +169,27 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
             "lg:hidden relative overflow-hidden rounded-xl h-10 w-10",
             "bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
             "text-white shadow-lg shadow-blue-500/25",
-            "transition-all duration-300"
+            "transition-all duration-300",
           )}
           onClick={onMenuClick}
         >
           <div className="relative">
-            <Menu className={cn(
-              "h-5 w-5 transition-all duration-300 absolute",
-              isMenuOpen ? "rotate-90 opacity-0 scale-50" : "rotate-0 opacity-100 scale-100"
-            )} />
-            <X className={cn(
-              "h-5 w-5 transition-all duration-300",
-              isMenuOpen ? "rotate-0 opacity-100 scale-100" : "-rotate-90 opacity-0 scale-50"
-            )} />
+            <Menu
+              className={cn(
+                "h-5 w-5 transition-all duration-300 absolute",
+                isMenuOpen
+                  ? "rotate-90 opacity-0 scale-50"
+                  : "rotate-0 opacity-100 scale-100",
+              )}
+            />
+            <X
+              className={cn(
+                "h-5 w-5 transition-all duration-300",
+                isMenuOpen
+                  ? "rotate-0 opacity-100 scale-100"
+                  : "-rotate-90 opacity-0 scale-50",
+              )}
+            />
           </div>
         </Button>
 
@@ -166,7 +199,9 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
             {title}
           </h1>
           {subtitle && (
-            <p className="text-sm text-muted-foreground hidden sm:block">{subtitle}</p>
+            <p className="text-sm text-muted-foreground hidden sm:block">
+              {subtitle}
+            </p>
           )}
         </div>
       </div>
@@ -182,27 +217,28 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
         </div>
 
         {/* Mobile Search Button */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="md:hidden rounded-xl hover:bg-muted"
         >
           <Search className="h-5 w-5" />
         </Button>
 
+        {/* Offline Status Indicator */}
+        <OfflineIndicator />
+
         {/* Notifications */}
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="relative rounded-xl hover:bg-muted group"
             >
               <Bell className="h-5 w-5 transition-transform group-hover:scale-110" />
               {unreadCount > 0 && (
-                <Badge
-                  className="absolute -right-1 -top-1 h-5 min-w-5 items-center justify-center p-0 text-[10px] bg-gradient-to-r from-orange-500 to-orange-600 border-0 text-white shadow-lg shadow-orange-500/25"
-                >
+                <Badge className="absolute -right-1 -top-1 h-5 min-w-5 items-center justify-center p-0 text-[10px] bg-gradient-to-r from-orange-500 to-orange-600 border-0 text-white shadow-lg shadow-orange-500/25">
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </Badge>
               )}
@@ -231,7 +267,7 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
                       key={notification.id}
                       className={cn(
                         "p-3 hover:bg-muted/50 cursor-pointer transition-colors relative group",
-                        !notification.is_read && "bg-primary/5"
+                        !notification.is_read && "bg-primary/5",
                       )}
                       onClick={() => handleNotificationClick(notification)}
                     >
@@ -241,10 +277,12 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className={cn(
-                              "text-sm truncate",
-                              !notification.is_read && "font-medium"
-                            )}>
+                            <p
+                              className={cn(
+                                "text-sm truncate",
+                                !notification.is_read && "font-medium",
+                              )}
+                            >
                               {notification.title}
                             </p>
                             {!notification.is_read && (
@@ -258,7 +296,10 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
                           )}
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] text-muted-foreground">
-                              {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                              {formatDistanceToNow(
+                                new Date(notification.created_at),
+                                { addSuffix: true },
+                              )}
                             </span>
                             {notification.link && (
                               <ExternalLink className="h-3 w-3 text-muted-foreground" />
@@ -283,9 +324,9 @@ export function Header({ title, subtitle, onMenuClick, isMenuOpen }: HeaderProps
               )}
             </ScrollArea>
             <div className="p-2 border-t">
-              <Button 
-                variant="ghost" 
-                className="w-full text-sm" 
+              <Button
+                variant="ghost"
+                className="w-full text-sm"
                 onClick={() => {
                   navigate("/notifications");
                   setIsOpen(false);

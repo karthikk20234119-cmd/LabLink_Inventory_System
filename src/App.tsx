@@ -37,7 +37,11 @@ import Repairs from "./pages/Repairs";
 import MessageCenter from "./pages/MessageCenter";
 import BorrowAnalytics from "./pages/BorrowAnalytics";
 import DamageReports from "./pages/DamageReports";
+import KioskMode from "./pages/KioskMode";
+import PublicCatalog from "./pages/PublicCatalog";
+import PublicItemDetail from "./pages/PublicItemDetail";
 import { CommandPalette } from "./components/CommandPalette";
+import { PWAUpdatePrompt } from "./components/pwa/PWAUpdatePrompt";
 
 const queryClient = new QueryClient();
 
@@ -49,14 +53,29 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <CommandPalette />
+          <PWAUpdatePrompt />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            
+
+            {/* Public Catalog Routes */}
+            <Route path="/catalog" element={<PublicCatalog />} />
+            <Route path="/catalog/:id" element={<PublicItemDetail />} />
+
             {/* Public QR Scan Routes */}
             <Route path="/scan/:id" element={<PublicScan />} />
             <Route path="/scan/unit/:unitId" element={<PublicScan />} />
-            
+
+            {/* Kiosk Mode — fullscreen self-checkout */}
+            <Route
+              path="/kiosk"
+              element={
+                <ProtectedRoute>
+                  <KioskMode />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Protected Routes */}
             <Route
               path="/dashboard"

@@ -1,24 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  sendChatMessage, 
-  isOffTopicRequest, 
+import {
+  sendChatMessage,
+  streamChatMessage,
+  isOffTopicRequest,
   getOffTopicResponse,
-  ChatMessage as ChatMessageType 
+  ChatMessage as ChatMessageType,
 } from "@/services/chatbotService";
 import { ChatMessage } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  MessageCircle, 
-  X, 
-  Send, 
-  Loader2, 
-  Minimize2,
-  Bot
-} from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Minimize2, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ChatbotWidget() {
@@ -28,8 +22,9 @@ export function ChatbotWidget() {
   const [messages, setMessages] = useState<ChatMessageType[]>([
     {
       role: "assistant",
-      content: "Hello! I'm LabLink Assistant. I can help you with:\n\n• Finding items in the inventory\n• Understanding how to borrow items\n• Checking item availability\n• Answering questions about categories and departments\n\nHow can I assist you today?"
-    }
+      content:
+        "Hello! I'm LabLink Assistant. I can help you with:\n\n• Finding items in the inventory\n• Understanding how to borrow items\n• Checking item availability\n• Answering questions about categories and departments\n\nHow can I assist you today?",
+    },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,19 +37,26 @@ export function ChatbotWidget() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading || !user || requestInProgress.current) return;
+    if (!input.trim() || isLoading || !user || requestInProgress.current)
+      return;
 
     const userMessage = input.trim();
     setInput("");
     requestInProgress.current = true;
 
     // Add user message to chat
-    const newUserMessage: ChatMessageType = { role: "user", content: userMessage };
-    setMessages(prev => [...prev, newUserMessage]);
+    const newUserMessage: ChatMessageType = {
+      role: "user",
+      content: userMessage,
+    };
+    setMessages((prev) => [...prev, newUserMessage]);
 
     // Check for off-topic requests
     if (isOffTopicRequest(userMessage)) {
-      setMessages(prev => [...prev, { role: "assistant", content: getOffTopicResponse() }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: getOffTopicResponse() },
+      ]);
       requestInProgress.current = false;
       return;
     }
@@ -65,24 +67,43 @@ export function ChatbotWidget() {
       // Prepare user context
       const userContext = {
         userId: user.id,
-        userRole: (profile?.role || "student") as "admin" | "staff" | "technician" | "student",
+        userRole: (profile?.role || "student") as
+          | "admin"
+          | "staff"
+          | "technician"
+          | "student",
         userName: profile?.full_name || user.email?.split("@")[0] || "User",
-        userEmail: user.email || ""
+        userEmail: user.email || "",
       };
 
       // Get all messages except system messages for context
-      const chatHistory = [...messages, newUserMessage].filter(m => m.role !== "system");
-      
-      // Send to API
-      const response = await sendChatMessage(chatHistory, userContext);
-      
-      setMessages(prev => [...prev, { role: "assistant", content: response }]);
+      const chatHistory = [...messages, newUserMessage].filter(
+        (m) => m.role !== "system",
+      );
+
+      // Initialize an empty assistant message for streaming
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      // Send to API with streaming
+      await streamChatMessage(chatHistory, userContext, (content) => {
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastIdx = newMessages.length - 1;
+          if (lastIdx >= 0 && newMessages[lastIdx].role === "assistant") {
+            newMessages[lastIdx] = { ...newMessages[lastIdx], content };
+          }
+          return newMessages;
+        });
+      });
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: "I apologize, but I encountered an error. Please try again." 
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "I apologize, but I encountered an error. Please try again.",
+        },
+      ]);
     } finally {
       setIsLoading(false);
       requestInProgress.current = false;
@@ -114,13 +135,13 @@ export function ChatbotWidget() {
 
       {/* Chat Window */}
       {isOpen && (
-        <Card 
+        <Card
           className={cn(
             "fixed z-50 shadow-2xl transition-all duration-300 border-2",
-            isMinimized 
-              ? "bottom-6 right-6 w-72 h-14" 
+            isMinimized
+              ? "bottom-6 right-6 w-72 h-14"
               : "bottom-6 right-6 w-[380px] h-[520px] max-h-[80vh]",
-            "flex flex-col"
+            "flex flex-col",
           )}
         >
           {/* Header */}
@@ -172,7 +193,9 @@ export function ChatbotWidget() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">Thinking...</span>
+                          <span className="text-sm text-muted-foreground">
+                            Thinking...
+                          </span>
                         </div>
                       </div>
                     )}

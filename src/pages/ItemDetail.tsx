@@ -4,7 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,13 +36,46 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  ArrowLeft, MoreVertical, Edit, Trash2, QrCode, Share2, Download, 
-  Wrench, History, Package, MapPin, Calendar, DollarSign, Shield,
-  User, Clock, AlertTriangle, CheckCircle, XCircle, BarChart3,
-  Printer, Tag, Building2, Hash, Layers, AlertCircle, HandHeart,
-  ChevronLeft, ChevronRight, ImageIcon, ExternalLink, Info, 
-  Box, Barcode, CalendarDays, Award, Store, Ruler, FileText
+import {
+  ArrowLeft,
+  MoreVertical,
+  Edit,
+  Trash2,
+  QrCode,
+  Share2,
+  Download,
+  Wrench,
+  History,
+  Package,
+  MapPin,
+  Calendar,
+  DollarSign,
+  Shield,
+  User,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  BarChart3,
+  Printer,
+  Tag,
+  Building2,
+  Hash,
+  Layers,
+  AlertCircle,
+  HandHeart,
+  ChevronLeft,
+  ChevronRight,
+  ImageIcon,
+  ExternalLink,
+  Info,
+  Box,
+  Barcode,
+  CalendarDays,
+  Award,
+  Store,
+  Ruler,
+  FileText,
 } from "lucide-react";
 import QRCode from "qrcode";
 
@@ -118,7 +157,7 @@ function ItemDetailSkeleton() {
             ))}
           </div>
         </div>
-        
+
         {/* Right - Details */}
         <div className="lg:col-span-3 space-y-4">
           <Skeleton className="h-24 rounded-2xl" />
@@ -136,21 +175,58 @@ function ItemDetailSkeleton() {
 
 // Status Badge Component with Premium Styling
 function StatusBadge({ status }: { status: string }) {
-  const statusConfig: Record<string, { icon: React.ElementType; bgClass: string; textClass: string }> = {
-    available: { icon: CheckCircle, bgClass: "bg-emerald-500/10", textClass: "text-emerald-600 dark:text-emerald-400" },
-    issued: { icon: User, bgClass: "bg-blue-500/10", textClass: "text-blue-600 dark:text-blue-400" },
-    borrowed: { icon: User, bgClass: "bg-sky-500/10", textClass: "text-sky-600 dark:text-sky-400" },
-    maintenance: { icon: Wrench, bgClass: "bg-amber-500/10", textClass: "text-amber-600 dark:text-amber-400" },
-    under_maintenance: { icon: Wrench, bgClass: "bg-amber-500/10", textClass: "text-amber-600 dark:text-amber-400" },
-    damaged: { icon: AlertTriangle, bgClass: "bg-red-500/10", textClass: "text-red-600 dark:text-red-400" },
-    archived: { icon: XCircle, bgClass: "bg-gray-500/10", textClass: "text-gray-600 dark:text-gray-400" },
+  const statusConfig: Record<
+    string,
+    { icon: React.ElementType; bgClass: string; textClass: string }
+  > = {
+    available: {
+      icon: CheckCircle,
+      bgClass: "bg-emerald-500/10",
+      textClass: "text-emerald-600 dark:text-emerald-400",
+    },
+    issued: {
+      icon: User,
+      bgClass: "bg-blue-500/10",
+      textClass: "text-blue-600 dark:text-blue-400",
+    },
+    borrowed: {
+      icon: User,
+      bgClass: "bg-sky-500/10",
+      textClass: "text-sky-600 dark:text-sky-400",
+    },
+    maintenance: {
+      icon: Wrench,
+      bgClass: "bg-amber-500/10",
+      textClass: "text-amber-600 dark:text-amber-400",
+    },
+    under_maintenance: {
+      icon: Wrench,
+      bgClass: "bg-amber-500/10",
+      textClass: "text-amber-600 dark:text-amber-400",
+    },
+    damaged: {
+      icon: AlertTriangle,
+      bgClass: "bg-red-500/10",
+      textClass: "text-red-600 dark:text-red-400",
+    },
+    archived: {
+      icon: XCircle,
+      bgClass: "bg-gray-500/10",
+      textClass: "text-gray-600 dark:text-gray-400",
+    },
   };
 
-  const config = statusConfig[status] || { icon: Package, bgClass: "bg-gray-500/10", textClass: "text-gray-600" };
+  const config = statusConfig[status] || {
+    icon: Package,
+    bgClass: "bg-gray-500/10",
+    textClass: "text-gray-600",
+  };
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${config.bgClass} ${config.textClass} border border-current/20`}>
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${config.bgClass} ${config.textClass} border border-current/20`}
+    >
       <Icon className="h-3.5 w-3.5" />
       <span className="capitalize">{status.replace(/_/g, " ")}</span>
     </span>
@@ -160,44 +236,65 @@ function StatusBadge({ status }: { status: string }) {
 // Condition Badge Component
 function ConditionBadge({ condition }: { condition: string }) {
   const conditionConfig: Record<string, { color: string }> = {
-    excellent: { color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
-    good: { color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
-    fair: { color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
-    poor: { color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" },
+    excellent: {
+      color:
+        "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    },
+    good: {
+      color:
+        "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    },
+    fair: {
+      color:
+        "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    },
+    poor: {
+      color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+    },
   };
 
-  const config = conditionConfig[condition] || { color: "bg-gray-500/10 text-gray-600 border-gray-500/20" };
+  const config = conditionConfig[condition] || {
+    color: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+  };
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize border ${config.color}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize border ${config.color}`}
+    >
       {condition}
     </span>
   );
 }
 
 // Info Card Component - Modern Glass Design
-function InfoCard({ 
-  icon: Icon, 
-  label, 
-  value, 
+function InfoCard({
+  icon: Icon,
+  label,
+  value,
   className = "",
-  valueClassName = ""
-}: { 
-  icon: React.ElementType; 
-  label: string; 
+  valueClassName = "",
+}: {
+  icon: React.ElementType;
+  label: string;
   value: React.ReactNode;
   className?: string;
   valueClassName?: string;
 }) {
   return (
-    <div className={`group relative p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 ${className}`}>
+    <div
+      className={`group relative p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-lg transition-all duration-300 ${className}`}
+    >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
           <Icon className="h-4 w-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-muted-foreground mb-0.5">{label}</p>
-          <p className={`text-sm font-semibold text-foreground truncate ${valueClassName}`}>
+          <p className="text-xs font-medium text-muted-foreground mb-0.5">
+            {label}
+          </p>
+          <p
+            className={`text-sm font-semibold text-foreground truncate ${valueClassName}`}
+          >
             {value || <span className="text-muted-foreground/50">—</span>}
           </p>
         </div>
@@ -207,12 +304,12 @@ function InfoCard({
 }
 
 // Image Gallery Component
-function ImageGallery({ 
-  mainImage, 
-  subImages, 
+function ImageGallery({
+  mainImage,
+  subImages,
   itemName,
-  onImageClick 
-}: { 
+  onImageClick,
+}: {
   mainImage: string | null;
   subImages: string[] | null;
   itemName: string;
@@ -221,7 +318,9 @@ function ImageGallery({
   const [selectedImage, setSelectedImage] = useState<string | null>(mainImage);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const allImages = [mainImage, ...(subImages || [])].filter(Boolean) as string[];
+  const allImages = [mainImage, ...(subImages || [])].filter(
+    Boolean,
+  ) as string[];
 
   useEffect(() => {
     setSelectedImage(mainImage);
@@ -253,13 +352,13 @@ function ImageGallery({
     <div className="space-y-4">
       {/* Main Image Container */}
       <div className="relative group">
-        <div 
+        <div
           className="aspect-square w-full rounded-2xl bg-gradient-to-br from-muted/50 to-muted overflow-hidden cursor-zoom-in border border-border/50 shadow-lg"
           onClick={() => selectedImage && onImageClick(selectedImage)}
         >
           {selectedImage ? (
-            <img 
-              src={selectedImage} 
+            <img
+              src={selectedImage}
               alt={itemName}
               className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
             />
@@ -269,18 +368,24 @@ function ImageGallery({
               <span className="text-sm font-medium">No Image Available</span>
             </div>
           )}
-          
+
           {/* Navigation Arrows */}
           {allImages.length > 1 && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); handlePrevious(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevious();
+                }}
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNext();
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -313,13 +418,13 @@ function ImageGallery({
               key={index}
               onClick={() => handleImageSelect(url, index)}
               className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                currentIndex === index 
-                  ? "border-primary ring-2 ring-primary/30" 
+                currentIndex === index
+                  ? "border-primary ring-2 ring-primary/30"
                   : "border-border/50 hover:border-primary/50"
               }`}
             >
-              <img 
-                src={url} 
+              <img
+                src={url}
                 alt={`${itemName} - ${index + 1}`}
                 className="w-full h-full object-cover"
               />
@@ -332,13 +437,13 @@ function ImageGallery({
 }
 
 // QR Section Component
-function QRSection({ 
-  qrDataUrl, 
-  itemName, 
+function QRSection({
+  qrDataUrl,
+  itemName,
   itemCode,
-  onDownload, 
-  onShare, 
-  onPrint 
+  onDownload,
+  onShare,
+  onPrint,
 }: {
   qrDataUrl: string;
   itemName: string;
@@ -355,36 +460,40 @@ function QRSection({
         </div>
         <h3 className="font-semibold text-foreground">QR Code</h3>
       </div>
-      
+
       <div className="flex flex-col items-center">
         {qrDataUrl && (
           <div className="p-3 bg-white rounded-xl shadow-inner mb-4">
-            <img src={qrDataUrl} alt="QR Code" className="w-32 h-32 md:w-36 md:h-36" />
+            <img
+              src={qrDataUrl}
+              alt="QR Code"
+              className="w-32 h-32 md:w-36 md:h-36"
+            />
           </div>
         )}
-        
+
         <div className="grid grid-cols-3 gap-2 w-full">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onDownload}
             className="flex items-center gap-1.5 text-xs"
           >
             <Download className="h-3.5 w-3.5" />
             Download
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onShare}
             className="flex items-center gap-1.5 text-xs"
           >
             <Share2 className="h-3.5 w-3.5" />
             Share
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onPrint}
             className="flex items-center gap-1.5 text-xs"
           >
@@ -398,19 +507,20 @@ function QRSection({
 }
 
 // Availability Card Component
-function AvailabilityCard({ 
-  availableCount, 
-  totalCount, 
-  issuedCount, 
-  maintenanceCount 
+function AvailabilityCard({
+  availableCount,
+  totalCount,
+  issuedCount,
+  maintenanceCount,
 }: {
   availableCount: number;
   totalCount: number;
   issuedCount: number;
   maintenanceCount: number;
 }) {
-  const percentage = totalCount > 0 ? Math.round((availableCount / totalCount) * 100) : 0;
-  
+  const percentage =
+    totalCount > 0 ? Math.round((availableCount / totalCount) * 100) : 0;
+
   return (
     <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
       <div className="flex items-center justify-between mb-4">
@@ -418,20 +528,24 @@ function AvailabilityCard({
           <CheckCircle className="h-5 w-5 text-emerald-600" />
           Availability
         </h3>
-        <span className="text-2xl font-bold text-emerald-600">{percentage}%</span>
+        <span className="text-2xl font-bold text-emerald-600">
+          {percentage}%
+        </span>
       </div>
-      
+
       {/* Progress Bar */}
       <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
-        <div 
+        <div
           className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>
-      
+
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="p-2 rounded-lg bg-emerald-500/10">
-          <div className="text-lg font-bold text-emerald-600">{availableCount}</div>
+          <div className="text-lg font-bold text-emerald-600">
+            {availableCount}
+          </div>
           <div className="text-xs text-muted-foreground">Available</div>
         </div>
         <div className="p-2 rounded-lg bg-blue-500/10">
@@ -439,7 +553,9 @@ function AvailabilityCard({
           <div className="text-xs text-muted-foreground">Issued</div>
         </div>
         <div className="p-2 rounded-lg bg-amber-500/10">
-          <div className="text-lg font-bold text-amber-600">{maintenanceCount}</div>
+          <div className="text-lg font-bold text-amber-600">
+            {maintenanceCount}
+          </div>
           <div className="text-xs text-muted-foreground">Maintenance</div>
         </div>
       </div>
@@ -453,14 +569,16 @@ export default function ItemDetailPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  
+
   const [item, setItem] = useState<ItemData | null>(null);
   const [units, setUnits] = useState<ItemUnit[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
-  const [selectedZoomImage, setSelectedZoomImage] = useState<string | null>(null);
+  const [selectedZoomImage, setSelectedZoomImage] = useState<string | null>(
+    null,
+  );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [borrowDialogOpen, setBorrowDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -488,27 +606,40 @@ export default function ItemDetailPage() {
     // Subscribe to real-time updates
     const channel = supabase
       .channel(`item-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: `id=eq.${id}` }, 
-        () => fetchItem()
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "items", filter: `id=eq.${id}` },
+        () => fetchItem(),
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'item_units', filter: `item_id=eq.${id}` }, 
-        () => fetchUnits()
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "item_units",
+          filter: `item_id=eq.${id}`,
+        },
+        () => fetchUnits(),
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   const fetchItem = async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from("items")
-      .select(`
+      .select(
+        `
         *,
         category:categories(name, color_hex),
         department:departments(name),
         creator:profiles!items_created_by_fkey(full_name)
-      `)
+      `,
+      )
       .eq("id", id)
       .single();
 
@@ -516,13 +647,13 @@ export default function ItemDetailPage() {
       setItem(data as unknown as ItemData);
       // Generate QR code
       const qrUrl = `${window.location.origin}/scan/${id}`;
-      const dataUrl = await QRCode.toDataURL(qrUrl, { 
-        width: 256, 
+      const dataUrl = await QRCode.toDataURL(qrUrl, {
+        width: 256,
         margin: 2,
         color: {
-          dark: '#1e293b',
-          light: '#ffffff'
-        }
+          dark: "#1e293b",
+          light: "#ffffff",
+        },
       });
       setQrDataUrl(dataUrl);
     }
@@ -535,7 +666,7 @@ export default function ItemDetailPage() {
       .select("*")
       .eq("item_id", id)
       .order("unit_number");
-    
+
     if (data) setUnits(data);
   };
 
@@ -546,12 +677,12 @@ export default function ItemDetailPage() {
       .eq("entity_id", id)
       .order("created_at", { ascending: false })
       .limit(50);
-    
+
     if (data) {
       const logs: ActivityLog[] = data.map((log) => ({
         id: log.id,
         action: log.action,
-        description: log.description || '',
+        description: log.description || "",
         created_at: log.created_at,
         performed_by: log.performed_by,
         performer: null,
@@ -561,14 +692,26 @@ export default function ItemDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this item? This action cannot be undone.")) return;
-    
+    if (
+      !confirm(
+        "Are you sure you want to delete this item? This action cannot be undone.",
+      )
+    )
+      return;
+
     const { error } = await supabase.from("items").delete().eq("id", id);
-    
+
     if (error) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
     } else {
-      toast({ title: "Item Deleted", description: "The item has been permanently removed." });
+      toast({
+        title: "Item Deleted",
+        description: "The item has been permanently removed.",
+      });
       navigate("/items");
     }
   };
@@ -579,7 +722,10 @@ export default function ItemDetailPage() {
     link.href = qrDataUrl;
     link.download = `QR-${item?.item_code || id}.png`;
     link.click();
-    toast({ title: "QR Downloaded", description: "QR code saved to your device." });
+    toast({
+      title: "QR Downloaded",
+      description: "QR code saved to your device.",
+    });
   };
 
   const shareQR = async () => {
@@ -588,13 +734,16 @@ export default function ItemDetailPage() {
       await navigator.share({ title: `QR: ${item?.name}`, url });
     } else {
       await navigator.clipboard.writeText(url);
-      toast({ title: "Link Copied!", description: "QR scan link copied to clipboard." });
+      toast({
+        title: "Link Copied!",
+        description: "QR scan link copied to clipboard.",
+      });
     }
   };
 
   const printQR = () => {
     if (!qrDataUrl) return;
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(`
         <html>
@@ -627,22 +776,30 @@ export default function ItemDetailPage() {
   };
 
   // Calculate unit stats
-  const availableCount = units.filter(u => u.status === 'available').length;
-  const issuedCount = units.filter(u => u.status === 'issued' || u.status === 'borrowed').length;
-  const maintenanceCount = units.filter(u => u.status === 'maintenance' || u.status === 'under_maintenance').length;
+  const availableCount = units.filter((u) => u.status === "available").length;
+  const issuedCount = units.filter(
+    (u) => u.status === "issued" || u.status === "borrowed",
+  ).length;
+  const maintenanceCount = units.filter(
+    (u) => u.status === "maintenance" || u.status === "under_maintenance",
+  ).length;
   const totalUnits = units.length;
 
   // Get formatted location
   const getLocation = () => {
-    const parts = [item?.lab_location, item?.storage_location, item?.shelf_location].filter(Boolean);
+    const parts = [
+      item?.lab_location,
+      item?.storage_location,
+      item?.shelf_location,
+    ].filter(Boolean);
     return parts.join(" • ") || null;
   };
 
   // Render loading state
   if (isLoading) {
     return (
-      <DashboardLayout 
-        title="Item Details" 
+      <DashboardLayout
+        title="Item Details"
         subtitle="Loading..."
         userRole={userRole as "admin" | "staff" | "student" | "technician"}
       >
@@ -654,8 +811,8 @@ export default function ItemDetailPage() {
   // Render not found state
   if (!item) {
     return (
-      <DashboardLayout 
-        title="Item Not Found" 
+      <DashboardLayout
+        title="Item Not Found"
         userRole={userRole as "admin" | "staff" | "student" | "technician"}
       >
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -664,7 +821,8 @@ export default function ItemDetailPage() {
           </div>
           <h2 className="text-2xl font-semibold mb-2">Item Not Found</h2>
           <p className="text-muted-foreground mb-8 max-w-md">
-            The item you're looking for doesn't exist or has been removed from the inventory.
+            The item you're looking for doesn't exist or has been removed from
+            the inventory.
           </p>
           <Button onClick={() => navigate("/browse")} size="lg">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -704,7 +862,10 @@ export default function ItemDetailPage() {
           <DropdownMenuItem onClick={() => navigate(`/items/${id}/edit`)}>
             <Edit className="h-4 w-4 mr-2" /> Edit Item
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+          <DropdownMenuItem
+            onClick={handleDelete}
+            className="text-destructive focus:text-destructive"
+          >
             <Trash2 className="h-4 w-4 mr-2" /> Delete Item
           </DropdownMenuItem>
         </>
@@ -713,7 +874,7 @@ export default function ItemDetailPage() {
   );
 
   return (
-    <DashboardLayout 
+    <DashboardLayout
       title={item.name}
       subtitle={item.item_code}
       userRole={userRole as "admin" | "staff" | "student" | "technician"}
@@ -721,8 +882,8 @@ export default function ItemDetailPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => navigate(-1)}
             className="gap-2 hover:bg-muted/80"
           >
@@ -732,7 +893,7 @@ export default function ItemDetailPage() {
 
           <div className="flex items-center gap-3">
             <StatusBadge status={item.status} />
-            
+
             {/* Desktop dropdown menu */}
             <div className="hidden md:block">
               <DropdownMenu>
@@ -758,25 +919,54 @@ export default function ItemDetailPage() {
                 <DrawerContent>
                   <DrawerHeader className="text-left">
                     <DrawerTitle>Options</DrawerTitle>
-                    <DrawerDescription>Choose an action for this item</DrawerDescription>
+                    <DrawerDescription>
+                      Choose an action for this item
+                    </DrawerDescription>
                   </DrawerHeader>
                   <div className="px-4 pb-4 space-y-1">
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => { downloadQR(); setMobileMenuOpen(false); }}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        downloadQR();
+                        setMobileMenuOpen(false);
+                      }}
+                    >
                       <Download className="h-4 w-4 mr-3" /> Download QR
                     </Button>
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => { shareQR(); setMobileMenuOpen(false); }}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        shareQR();
+                        setMobileMenuOpen(false);
+                      }}
+                    >
                       <Share2 className="h-4 w-4 mr-3" /> Share QR Code
                     </Button>
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => { printQR(); setMobileMenuOpen(false); }}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        printQR();
+                        setMobileMenuOpen(false);
+                      }}
+                    >
                       <Printer className="h-4 w-4 mr-3" /> Print QR
                     </Button>
                     {canViewSensitive && (
                       <>
                         <div className="border-t border-border my-2" />
-                        <Button variant="ghost" className="w-full justify-start">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                        >
                           <Wrench className="h-4 w-4 mr-3" /> Maintenance Log
                         </Button>
-                        <Button variant="ghost" className="w-full justify-start">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                        >
                           <History className="h-4 w-4 mr-3" /> Activity History
                         </Button>
                       </>
@@ -784,10 +974,24 @@ export default function ItemDetailPage() {
                     {isAdmin && (
                       <>
                         <div className="border-t border-border my-2" />
-                        <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate(`/items/${id}/edit`); setMobileMenuOpen(false); }}>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            navigate(`/items/${id}/edit`);
+                            setMobileMenuOpen(false);
+                          }}
+                        >
                           <Edit className="h-4 w-4 mr-3" /> Edit Item
                         </Button>
-                        <Button variant="ghost" className="w-full justify-start text-destructive" onClick={() => { handleDelete(); setMobileMenuOpen(false); }}>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-destructive"
+                          onClick={() => {
+                            handleDelete();
+                            setMobileMenuOpen(false);
+                          }}
+                        >
                           <Trash2 className="h-4 w-4 mr-3" /> Delete Item
                         </Button>
                       </>
@@ -809,7 +1013,7 @@ export default function ItemDetailPage() {
           {/* Left Column - Image Gallery & QR */}
           <div className="lg:col-span-2 space-y-6">
             {/* Image Gallery */}
-            <ImageGallery 
+            <ImageGallery
               mainImage={item.image_url}
               subImages={item.sub_images}
               itemName={item.name}
@@ -817,7 +1021,7 @@ export default function ItemDetailPage() {
             />
 
             {/* QR Code Section */}
-            <QRSection 
+            <QRSection
               qrDataUrl={qrDataUrl}
               itemName={item.name}
               itemCode={item.item_code}
@@ -829,8 +1033,8 @@ export default function ItemDetailPage() {
             {/* Action Buttons - Desktop */}
             <div className="hidden lg:flex flex-col gap-3">
               {isStudent && item.is_borrowable && (
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 gap-2"
                   onClick={handleBorrow}
                 >
@@ -838,9 +1042,9 @@ export default function ItemDetailPage() {
                   Request to Borrow
                 </Button>
               )}
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="w-full gap-2"
                 onClick={handleReportIssue}
               >
@@ -854,15 +1058,23 @@ export default function ItemDetailPage() {
           <div className="lg:col-span-3 space-y-6">
             {/* Title Section - Mobile Only */}
             <div className="lg:hidden">
-              <h1 className="text-2xl font-bold text-foreground mb-1">{item.name}</h1>
-              <p className="text-sm text-muted-foreground font-mono">{item.item_code}</p>
+              <h1 className="text-2xl font-bold text-foreground mb-1">
+                {item.name}
+              </h1>
+              <p className="text-sm text-muted-foreground font-mono">
+                {item.item_code}
+              </p>
             </div>
 
             {/* Title Section - Desktop */}
             <div className="hidden lg:block p-6 rounded-2xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
-              <h1 className="text-3xl font-bold text-foreground mb-2">{item.name}</h1>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                {item.name}
+              </h1>
               <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-sm text-muted-foreground font-mono bg-muted px-2 py-1 rounded">{item.item_code}</span>
+                <span className="text-sm text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
+                  {item.item_code}
+                </span>
                 {item.category && (
                   <Badge variant="secondary" className="gap-1">
                     <Tag className="h-3 w-3" />
@@ -880,34 +1092,30 @@ export default function ItemDetailPage() {
 
             {/* Quick Info Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <InfoCard 
-                icon={Hash} 
-                label="Serial Number" 
+              <InfoCard
+                icon={Hash}
+                label="Serial Number"
                 value={item.serial_number}
               />
-              <InfoCard 
-                icon={Tag} 
-                label="Category" 
+              <InfoCard
+                icon={Tag}
+                label="Category"
                 value={item.category?.name}
               />
-              <InfoCard 
-                icon={Building2} 
-                label="Department" 
+              <InfoCard
+                icon={Building2}
+                label="Department"
                 value={item.department?.name}
               />
-              <InfoCard 
-                icon={MapPin} 
-                label="Location" 
-                value={getLocation()}
+              <InfoCard icon={MapPin} label="Location" value={getLocation()} />
+              <InfoCard
+                icon={Layers}
+                label="Quantity"
+                value={`${item.current_quantity || 0} ${item.unit || "pcs"}`}
               />
-              <InfoCard 
-                icon={Layers} 
-                label="Quantity" 
-                value={`${item.current_quantity || 0} ${item.unit || 'pcs'}`}
-              />
-              <InfoCard 
-                icon={Shield} 
-                label="Condition" 
+              <InfoCard
+                icon={Shield}
+                label="Condition"
                 value={<ConditionBadge condition={item.condition} />}
               />
             </div>
@@ -922,7 +1130,9 @@ export default function ItemDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.description}
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -930,25 +1140,45 @@ export default function ItemDetailPage() {
             {/* Tabs for Additional Info */}
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 h-auto p-1 bg-muted/50">
-                <TabsTrigger value="details" className="text-xs sm:text-sm py-2">Details</TabsTrigger>
+                <TabsTrigger
+                  value="details"
+                  className="text-xs sm:text-sm py-2"
+                >
+                  Details
+                </TabsTrigger>
                 <TabsTrigger value="units" className="text-xs sm:text-sm py-2">
                   Units ({totalUnits})
                 </TabsTrigger>
                 {canViewSensitive && (
-                  <TabsTrigger value="maintenance" className="text-xs sm:text-sm py-2">Maintenance</TabsTrigger>
+                  <TabsTrigger
+                    value="maintenance"
+                    className="text-xs sm:text-sm py-2"
+                  >
+                    Maintenance
+                  </TabsTrigger>
                 )}
                 {canViewSensitive && (
-                  <TabsTrigger value="history" className="text-xs sm:text-sm py-2">History</TabsTrigger>
+                  <TabsTrigger
+                    value="history"
+                    className="text-xs sm:text-sm py-2"
+                  >
+                    History
+                  </TabsTrigger>
                 )}
                 {isAdmin && (
-                  <TabsTrigger value="analytics" className="text-xs sm:text-sm py-2">Analytics</TabsTrigger>
+                  <TabsTrigger
+                    value="analytics"
+                    className="text-xs sm:text-sm py-2"
+                  >
+                    Analytics
+                  </TabsTrigger>
                 )}
               </TabsList>
 
               {/* Details Tab */}
               <TabsContent value="details" className="mt-4 space-y-4">
                 {/* Availability Card - Visible to all */}
-                <AvailabilityCard 
+                <AvailabilityCard
                   availableCount={availableCount}
                   totalCount={totalUnits || item.current_quantity}
                   issuedCount={issuedCount}
@@ -967,20 +1197,44 @@ export default function ItemDetailPage() {
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Purchase Date</p>
-                          <p className="font-medium">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString() : "—"}</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Purchase Date
+                          </p>
+                          <p className="font-medium">
+                            {item.purchase_date
+                              ? new Date(
+                                  item.purchase_date,
+                                ).toLocaleDateString()
+                              : "—"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Purchase Price</p>
-                          <p className="font-medium">₹{item.purchase_price?.toLocaleString() || "—"}</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Purchase Price
+                          </p>
+                          <p className="font-medium">
+                            ₹{item.purchase_price?.toLocaleString() || "—"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Supplier</p>
-                          <p className="font-medium">{item.supplier_name || "—"}</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Supplier
+                          </p>
+                          <p className="font-medium">
+                            {item.supplier_name || "—"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Warranty Until</p>
-                          <p className="font-medium">{item.warranty_until ? new Date(item.warranty_until).toLocaleDateString() : "—"}</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Warranty Until
+                          </p>
+                          <p className="font-medium">
+                            {item.warranty_until
+                              ? new Date(
+                                  item.warranty_until,
+                                ).toLocaleDateString()
+                              : "—"}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -999,20 +1253,34 @@ export default function ItemDetailPage() {
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Brand</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Brand
+                          </p>
                           <p className="font-medium">{item.brand || "—"}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Model</p>
-                          <p className="font-medium">{item.model_number || "—"}</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Model
+                          </p>
+                          <p className="font-medium">
+                            {item.model_number || "—"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Shelf Location</p>
-                          <p className="font-medium">{item.shelf_location || "—"}</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Shelf Location
+                          </p>
+                          <p className="font-medium">
+                            {item.shelf_location || "—"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-xs mb-1">Item Type</p>
-                          <p className="font-medium capitalize">{item.item_type || "—"}</p>
+                          <p className="text-muted-foreground text-xs mb-1">
+                            Item Type
+                          </p>
+                          <p className="font-medium capitalize">
+                            {item.item_type || "—"}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -1024,8 +1292,12 @@ export default function ItemDetailPage() {
               <TabsContent value="units" className="mt-4">
                 <Card className="border-border/50">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Individual Units</CardTitle>
-                    <CardDescription>Each unit has a unique serial number and QR code</CardDescription>
+                    <CardTitle className="text-base">
+                      Individual Units
+                    </CardTitle>
+                    <CardDescription>
+                      Each unit has a unique serial number and QR code
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
@@ -1033,12 +1305,14 @@ export default function ItemDetailPage() {
                         <div className="text-center py-12 text-muted-foreground">
                           <Box className="h-12 w-12 mx-auto mb-3 opacity-30" />
                           <p className="font-medium">No units generated yet</p>
-                          <p className="text-xs mt-1">Units will appear here once created</p>
+                          <p className="text-xs mt-1">
+                            Units will appear here once created
+                          </p>
                         </div>
                       ) : (
                         units.map((unit) => (
-                          <div 
-                            key={unit.id} 
+                          <div
+                            key={unit.id}
                             className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-xl transition-colors"
                           >
                             <div className="flex items-center gap-3">
@@ -1046,26 +1320,33 @@ export default function ItemDetailPage() {
                                 <Barcode className="h-4 w-4 text-primary" />
                               </div>
                               <div>
-                                <span className="font-mono text-sm font-medium">{unit.unit_serial_number}</span>
+                                <span className="font-mono text-sm font-medium">
+                                  {unit.unit_serial_number}
+                                </span>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <StatusBadge status={unit.status} />
                                   <ConditionBadge condition={unit.condition} />
                                 </div>
                               </div>
                             </div>
-                            <Button 
-                              size="icon" 
+                            <Button
+                              size="icon"
                               variant="ghost"
                               className="h-9 w-9"
                               onClick={() => {
                                 const qrUrl = `${window.location.origin}/scan/unit/${unit.id}`;
-                                QRCode.toDataURL(qrUrl, { width: 256 }).then((url) => {
-                                  const link = document.createElement("a");
-                                  link.href = url;
-                                  link.download = `QR-${unit.unit_serial_number}.png`;
-                                  link.click();
-                                  toast({ title: "QR Downloaded", description: `Downloaded QR for ${unit.unit_serial_number}` });
-                                });
+                                QRCode.toDataURL(qrUrl, { width: 256 }).then(
+                                  (url) => {
+                                    const link = document.createElement("a");
+                                    link.href = url;
+                                    link.download = `QR-${unit.unit_serial_number}.png`;
+                                    link.click();
+                                    toast({
+                                      title: "QR Downloaded",
+                                      description: `Downloaded QR for ${unit.unit_serial_number}`,
+                                    });
+                                  },
+                                );
                               }}
                             >
                               <QrCode className="h-4 w-4" />
@@ -1100,23 +1381,36 @@ export default function ItemDetailPage() {
                         {activityLogs.length === 0 ? (
                           <div className="text-center py-12 text-muted-foreground">
                             <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                            <p className="font-medium">No activity logged yet</p>
-                            <p className="text-xs mt-1">Activities will appear here when recorded</p>
+                            <p className="font-medium">
+                              No activity logged yet
+                            </p>
+                            <p className="text-xs mt-1">
+                              Activities will appear here when recorded
+                            </p>
                           </div>
                         ) : (
                           activityLogs.map((log) => (
-                            <div key={log.id} className="flex items-start gap-3 p-3 bg-muted/30 hover:bg-muted/50 rounded-xl transition-colors">
+                            <div
+                              key={log.id}
+                              className="flex items-start gap-3 p-3 bg-muted/30 hover:bg-muted/50 rounded-xl transition-colors"
+                            >
                               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                                 <Clock className="h-4 w-4 text-primary" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium">
                                   {log.action}
-                                  {log.description && <span className="font-normal text-muted-foreground"> - {log.description}</span>}
+                                  {log.description && (
+                                    <span className="font-normal text-muted-foreground">
+                                      {" "}
+                                      - {log.description}
+                                    </span>
+                                  )}
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                   {new Date(log.created_at).toLocaleString()}
-                                  {log.performer && ` by ${log.performer.full_name}`}
+                                  {log.performer &&
+                                    ` by ${log.performer.full_name}`}
                                 </p>
                               </div>
                             </div>
@@ -1141,22 +1435,38 @@ export default function ItemDetailPage() {
                     <CardContent>
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 text-center border border-emerald-500/20">
-                          <div className="text-3xl font-bold text-emerald-600">{availableCount}</div>
-                          <div className="text-xs text-muted-foreground mt-1">Available</div>
+                          <div className="text-3xl font-bold text-emerald-600">
+                            {availableCount}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Available
+                          </div>
                         </div>
                         <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 text-center border border-blue-500/20">
-                          <div className="text-3xl font-bold text-blue-600">{issuedCount}</div>
-                          <div className="text-xs text-muted-foreground mt-1">Issued</div>
+                          <div className="text-3xl font-bold text-blue-600">
+                            {issuedCount}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Issued
+                          </div>
                         </div>
                         <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 text-center border border-amber-500/20">
-                          <div className="text-3xl font-bold text-amber-600">{maintenanceCount}</div>
-                          <div className="text-xs text-muted-foreground mt-1">Maintenance</div>
+                          <div className="text-3xl font-bold text-amber-600">
+                            {maintenanceCount}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Maintenance
+                          </div>
                         </div>
                       </div>
                       <div className="text-center text-muted-foreground py-8 rounded-xl border border-dashed border-border">
                         <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                        <p className="font-medium">📊 Detailed charts coming soon!</p>
-                        <p className="text-xs mt-1">Usage trends, borrow history, and more</p>
+                        <p className="font-medium">
+                          📊 Detailed charts coming soon!
+                        </p>
+                        <p className="text-xs mt-1">
+                          Usage trends, borrow history, and more
+                        </p>
                       </div>
                     </CardContent>
                   </Card>
@@ -1170,7 +1480,7 @@ export default function ItemDetailPage() {
         <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-lg border-t border-border z-50">
           <div className="flex gap-3 max-w-lg mx-auto">
             {isStudent && item.is_borrowable && (
-              <Button 
+              <Button
                 className="flex-1 bg-gradient-to-r from-primary to-primary/80 gap-2"
                 onClick={handleBorrow}
               >
@@ -1178,7 +1488,7 @@ export default function ItemDetailPage() {
                 Borrow
               </Button>
             )}
-            <Button 
+            <Button
               variant="outline"
               className="flex-1 gap-2"
               onClick={handleReportIssue}
@@ -1186,11 +1496,7 @@ export default function ItemDetailPage() {
               <AlertCircle className="h-4 w-4" />
               Report Issue
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={downloadQR}
-            >
+            <Button variant="outline" size="icon" onClick={downloadQR}>
               <QrCode className="h-4 w-4" />
             </Button>
           </div>
@@ -1212,6 +1518,7 @@ export default function ItemDetailPage() {
       <BorrowRequestDialog
         itemId={id || ""}
         itemName={item.name}
+        availableQuantity={item.current_quantity}
         isOpen={borrowDialogOpen}
         onClose={() => setBorrowDialogOpen(false)}
         onSuccess={() => fetchItem()}

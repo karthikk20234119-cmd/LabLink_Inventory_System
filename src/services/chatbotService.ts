@@ -2,16 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 // OpenRouter API configuration
 // OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "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";
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
-// Free models with fallback - Updated list
+// Free models with fallback - Prioritized for speed
 const FREE_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "google/gemini-2.0-flash-thinking-exp:free",
-  "google/gemma-2-9b-it:free",
-  "meta-llama/llama-3.2-1b-instruct:free",
-  "microsoft/phi-3-mini-128k-instruct:free"
+  "google/gemma-3-4b-it:free",
+  "deepseek/deepseek-r1-0528:free",
+  "openai/gpt-oss-120b:free",
 ];
 
 export interface ChatMessage {
@@ -37,12 +35,20 @@ async function fetchDatabaseContext(userContext: UserContext): Promise<string> {
   }
 
   try {
-    const [itemsResult, categoriesResult, departmentsResult, chemicalsResult] = await Promise.all([
-      supabase.from("items").select("name, item_code, current_quantity, status, is_borrowable, storage_location, category:categories(name), department:departments(name)").limit(50),
-      supabase.from("categories").select("name, description"),
-      supabase.from("departments").select("name"),
-      supabase.from("chemicals").select("name, cas_number, current_quantity, unit, storage_location, expiry_date, is_active, department:departments(name)").eq("is_active", true).limit(30)
-    ]);
+    const [itemsResult, categoriesResult, departmentsResult, chemicalsResult] =
+      await Promise.all([
+        supabase
+          .from("items")
+          .select("name, item_code, current_quantity, status, storage_location")
+          .limit(30),
+        supabase.from("categories").select("name"),
+        supabase.from("departments").select("name"),
+        supabase
+          .from("chemicals")
+          .select("name, current_quantity, unit, storage_location")
+          .eq("is_active", true)
+          .limit(20),
+      ]);
 
     const items = itemsResult.data || [];
     const categories = categoriesResult.data || [];
@@ -53,28 +59,34 @@ async function fetchDatabaseContext(userContext: UserContext): Promise<string> {
 ## DATABASE INFORMATION
 
 ### Departments (${departments.length} total)
-${departments.map(d => `- ${d.name}`).join('\n')}
+${departments.map((d) => `- ${d.name}`).join("\n")}
 
 ### Categories (${categories.length} total)
-${categories.map(c => `- ${c.name}${c.description ? `: ${c.description}` : ''}`).join('\n')}
+${categories.map((c) => `- ${c.name}`).join("\n")}
 
 ### Items in Inventory (${items.length} total)
-| Item Name | Code | Qty | Status | Department | Location |
-|-----------|------|-----|--------|------------|----------|
-${items.map(item => 
-  `| ${item.name} | ${item.item_code || 'N/A'} | ${item.current_quantity} | ${item.status} | ${item.department?.name || 'N/A'} | ${item.storage_location || 'Not specified'} |`
-).join('\n')}
+| Item Name | Code | Qty | Status | Location |
+|-----------|------|-----|--------|----------|
+${items
+  .map(
+    (item) =>
+      `| ${item.name} | ${item.item_code || "N/A"} | ${item.current_quantity} | ${item.status} | ${item.storage_location || "Not specified"} |`,
+  )
+  .join("\n")}
 
 ### Chemicals in Lab (${chemicals.length} total)
-| Chemical Name | CAS Number | Qty | Unit | Location | Expiry |
-|---------------|------------|-----|------|----------|--------|
-${chemicals.map(chem => 
-  `| ${chem.name} | ${chem.cas_number || 'N/A'} | ${chem.current_quantity} | ${chem.unit} | ${chem.storage_location || 'Not specified'} | ${chem.expiry_date ? new Date(chem.expiry_date).toLocaleDateString() : 'N/A'} |`
-).join('\n')}
+| Chemical Name | Qty | Unit | Location |
+|---------------|-----|------|----------|
+${chemicals
+  .map(
+    (chem) =>
+      `| ${chem.name} | ${chem.current_quantity} | ${chem.unit} | ${chem.storage_location || "Not specified"} |`,
+  )
+  .join("\n")}
 `;
 
     // Fetch student's history if applicable
-    if (userContext.userRole === 'student') {
+    if (userContext.userRole === "student") {
       const { data: history } = await supabase
         .from("borrow_requests")
         .select("status, created_at, item:items(name)")
@@ -84,7 +96,7 @@ ${chemicals.map(chem =>
 
       if (history?.length) {
         context += `\n### Your Recent Borrow History\n`;
-        history.forEach(h => {
+        history.forEach((h) => {
           context += `- ${h.item?.name}: ${h.status} (${new Date(h.created_at).toLocaleDateString()})\n`;
         });
       }
@@ -155,7 +167,7 @@ Remember: Give complete, well-formatted responses. Never cut off mid-sentence.`;
 // Main chat function
 export async function sendChatMessage(
   messages: ChatMessage[],
-  userContext: UserContext
+  userContext: UserContext,
 ): Promise<string> {
   const dbContext = await fetchDatabaseContext(userContext);
   const systemPrompt = buildSystemPrompt(dbContext);
@@ -163,15 +175,14 @@ export async function sendChatMessage(
   const recentMessages = messages.slice(-5);
   const apiMessages = [
     { role: "system", content: systemPrompt },
-    ...recentMessages.map(m => ({ role: m.role, content: m.content }))
+    ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
   console.log("Sending request to OpenRouter with models:", FREE_MODELS);
-  
-  // Check if key is configured
+
   if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.includes("placeholder")) {
     console.error("OpenRouter API Key is missing or invalid");
-    return "Configuration Error: OpenRouter API Key is missing. Please add VITE_OPENROUTER_API_KEY to your environment variables.";
+    return "Configuration Error: OpenRouter API Key is missing.";
   }
 
   let lastError = "";
@@ -183,9 +194,9 @@ export async function sendChatMessage(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
           "HTTP-Referer": window.location.origin,
-          "X-Title": "LabLink"
+          "X-Title": "LabLink",
         },
         body: JSON.stringify({
           model: model,
@@ -193,7 +204,7 @@ export async function sendChatMessage(
           max_tokens: 1200,
           temperature: 0.4,
           top_p: 0.9,
-        })
+        }),
       });
 
       if (response.ok) {
@@ -205,32 +216,126 @@ export async function sendChatMessage(
         }
       } else {
         const errorText = await response.text();
-        console.warn(`Model ${model} failed with status ${response.status}: ${errorText}`);
-        
-        // Capture specific errors to report to user if all fail
-        if (response.status === 401) {
-          lastError = "Authentication failed. Please check your VITE_OPENROUTER_API_KEY.";
-        } else if (response.status === 429) {
-          lastError = "Rate limit exceeded. Please try again later.";
-        } else if (response.status === 402) {
-          lastError = "Insufficient credits in OpenRouter account.";
-        }
+        console.warn(
+          `Model ${model} failed with status ${response.status}: ${errorText}`,
+        );
       }
     } catch (err) {
       console.warn(`Model ${model} error:`, err);
-      if (!lastError) lastError = "Network connection error.";
     }
   }
 
-  console.error("All models failed to respond.");
-  return lastError || "I'm temporarily unable to respond due to high traffic or configuration issues. Please check the browser console for details.";
+  return "I'm temporarily unable to respond. Please try again later.";
+}
+
+/**
+ * Stream chat response from OpenRouter
+ */
+export async function streamChatMessage(
+  messages: ChatMessage[],
+  userContext: UserContext,
+  onChunk: (content: string) => void,
+): Promise<void> {
+  const dbContext = await fetchDatabaseContext(userContext);
+  const systemPrompt = buildSystemPrompt(dbContext);
+
+  const recentMessages = messages.slice(-5);
+  const apiMessages = [
+    { role: "system", content: systemPrompt },
+    ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
+  ];
+
+  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.includes("placeholder")) {
+    onChunk("Configuration Error: OpenRouter API Key is missing.");
+    return;
+  }
+
+  // Use the primary model for streaming to ensure best performance
+  const model = FREE_MODELS[0];
+
+  try {
+    const response = await fetch(OPENROUTER_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "HTTP-Referer": window.location.origin,
+        "X-Title": "LabLink",
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: apiMessages,
+        max_tokens: 1200,
+        temperature: 0.4,
+        top_p: 0.9,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API failed with status ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedContent = "";
+
+    if (!reader) throw new Error("Could not get reader from response body");
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const dataStr = line.replace("data: ", "").trim();
+          if (dataStr === "[DONE]") continue;
+
+          try {
+            const data = JSON.parse(dataStr);
+            const content = data.choices?.[0]?.delta?.content || "";
+            if (content) {
+              accumulatedContent += content;
+              onChunk(accumulatedContent);
+            }
+          } catch (e) {
+            console.warn("Error parsing stream chunk", e);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Streaming error:", error);
+    // Fallback to non-streaming if streaming fails
+    const fallbackResponse = await sendChatMessage(messages, userContext);
+    onChunk(fallbackResponse);
+  }
 }
 
 // Off-topic detection
 export function isOffTopicRequest(message: string): boolean {
-  const offTopicKeywords = ['movie', 'cinema', 'song', 'music', 'weather', 'news', 'sport', 'game', 'recipe', 'food', 'politics', 'crypto', 'bitcoin', 'joke', 'poem'];
+  const offTopicKeywords = [
+    "movie",
+    "cinema",
+    "song",
+    "music",
+    "weather",
+    "news",
+    "sport",
+    "game",
+    "recipe",
+    "food",
+    "politics",
+    "crypto",
+    "bitcoin",
+    "joke",
+    "poem",
+  ];
   const lower = message.toLowerCase();
-  return offTopicKeywords.some(k => lower.includes(k));
+  return offTopicKeywords.some((k) => lower.includes(k));
 }
 
 export function getOffTopicResponse(): string {

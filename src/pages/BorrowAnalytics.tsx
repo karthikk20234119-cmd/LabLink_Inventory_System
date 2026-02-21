@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -54,7 +60,14 @@ import {
   Eye,
   Image as ImageIcon,
 } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
+import {
+  format,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+  parseISO,
+} from "date-fns";
 
 interface BorrowRequest {
   id: string;
@@ -99,18 +112,30 @@ interface Department {
   name: string;
 }
 
-const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+const CHART_COLORS = [
+  "#10b981",
+  "#3b82f6",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
+];
 
 export default function BorrowAnalytics() {
   const [borrowRequests, setBorrowRequests] = useState<BorrowRequest[]>([]);
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [activeBorrowCount, setActiveBorrowCount] = useState(0); // Source of truth: issued_items
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Filters
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<string>(format(subMonths(new Date(), 6), "yyyy-MM-dd"));
-  const [dateTo, setDateTo] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [dateFrom, setDateFrom] = useState<string>(
+    format(subMonths(new Date(), 6), "yyyy-MM-dd"),
+  );
+  const [dateTo, setDateTo] = useState<string>(
+    format(new Date(), "yyyy-MM-dd"),
+  );
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -122,30 +147,41 @@ export default function BorrowAnalytics() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [borrowRes, returnRes, deptRes] = await Promise.all([
-        supabase
-          .from("borrow_requests")
-          .select(`
+      const [borrowRes, returnRes, deptRes, activeBorrowsRes] =
+        await Promise.all([
+          supabase
+            .from("borrow_requests")
+            .select(
+              `
             *,
             item:items(name, department_id),
             student:profiles!borrow_requests_student_id_fkey(full_name),
             approver:profiles!borrow_requests_approved_by_fkey(full_name)
-          `)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("return_requests")
-          .select(`
+          `,
+            )
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("return_requests")
+            .select(
+              `
             *,
             item:items(name),
             student:profiles!return_requests_student_id_fkey(full_name)
-          `)
-          .order("return_datetime", { ascending: false }),
-        supabase
-          .from("departments")
-          .select("id, name")
-          .eq("is_active", true)
-          .order("name"),
-      ]);
+          `,
+            )
+            .order("return_datetime", { ascending: false }),
+          supabase
+            .from("departments")
+            .select("id, name")
+            .eq("is_active", true)
+            .order("name"),
+          // Source of truth for active borrows — matches Dashboard's query exactly
+          supabase
+            .from("issued_items")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "active")
+            .is("returned_date", null),
+        ]);
 
       if (borrowRes.error) throw borrowRes.error;
       if (returnRes.error) throw returnRes.error;
@@ -154,6 +190,7 @@ export default function BorrowAnalytics() {
       setBorrowRequests((borrowRes.data || []) as unknown as BorrowRequest[]);
       setReturnRequests((returnRes.data || []) as unknown as ReturnRequest[]);
       setDepartments(deptRes.data || []);
+      setActiveBorrowCount(activeBorrowsRes.count || 0);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -164,12 +201,17 @@ export default function BorrowAnalytics() {
   // Filtered data
   const filteredBorrows = useMemo(() => {
     return borrowRequests.filter((req) => {
-      const matchesDepartment = departmentFilter === "all" || req.item_department_id === departmentFilter;
-      const matchesStatus = statusFilter === "all" || req.status === statusFilter;
-      const matchesSearch = 
+      const matchesDepartment =
+        departmentFilter === "all" ||
+        req.item_department_id === departmentFilter;
+      const matchesStatus =
+        statusFilter === "all" || req.status === statusFilter;
+      const matchesSearch =
         req.item?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.student?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
-      
+        req.student?.full_name
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
+
       const reqDate = parseISO(req.created_at);
       const matchesDate = isWithinInterval(reqDate, {
         start: parseISO(dateFrom),
@@ -178,20 +220,35 @@ export default function BorrowAnalytics() {
 
       return matchesDepartment && matchesStatus && matchesSearch && matchesDate;
     });
-  }, [borrowRequests, departmentFilter, statusFilter, searchQuery, dateFrom, dateTo]);
+  }, [
+    borrowRequests,
+    departmentFilter,
+    statusFilter,
+    searchQuery,
+    dateFrom,
+    dateTo,
+  ]);
 
-  // Stats
-  const stats = useMemo(() => ({
-    totalBorrows: filteredBorrows.length,
-    activeBorrows: filteredBorrows.filter(r => ["approved", "return_pending"].includes(r.status)).length,
-    returned: filteredBorrows.filter(r => r.status === "returned").length,
-    damaged: returnRequests.filter(r => ["damaged", "missing_parts", "lost"].includes(r.item_condition)).length,
-  }), [filteredBorrows, returnRequests]);
+  // Stats — activeBorrows uses issued_items (single source of truth, matches Dashboard)
+  const stats = useMemo(
+    () => ({
+      totalBorrows: filteredBorrows.length,
+      activeBorrows: activeBorrowCount,
+      returned: filteredBorrows.filter((r) => r.status === "returned").length,
+      damaged: returnRequests.filter((r) =>
+        ["damaged", "missing_parts", "lost"].includes(r.item_condition),
+      ).length,
+    }),
+    [filteredBorrows, returnRequests, activeBorrowCount],
+  );
 
   // Monthly trend data
   const monthlyTrend = useMemo(() => {
-    const months: Record<string, { month: string; borrows: number; returns: number }> = {};
-    
+    const months: Record<
+      string,
+      { month: string; borrows: number; returns: number }
+    > = {};
+
     for (let i = 5; i >= 0; i--) {
       const date = subMonths(new Date(), i);
       const key = format(date, "MMM yyyy");
@@ -214,22 +271,24 @@ export default function BorrowAnalytics() {
   // Department usage
   const departmentUsage = useMemo(() => {
     const usage: Record<string, number> = {};
-    
+
     filteredBorrows.forEach((req) => {
       const deptId = req.item_department_id || "unknown";
       usage[deptId] = (usage[deptId] || 0) + 1;
     });
 
-    return Object.entries(usage).map(([id, count]) => ({
-      name: departments.find(d => d.id === id)?.name || "Unknown",
-      value: count,
-    })).sort((a, b) => b.value - a.value);
+    return Object.entries(usage)
+      .map(([id, count]) => ({
+        name: departments.find((d) => d.id === id)?.name || "Unknown",
+        value: count,
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [filteredBorrows, departments]);
 
   // Top borrowed items
   const topItems = useMemo(() => {
     const itemCounts: Record<string, { name: string; count: number }> = {};
-    
+
     filteredBorrows.forEach((req) => {
       const name = req.item?.name || "Unknown";
       if (!itemCounts[name]) {
@@ -259,15 +318,19 @@ export default function BorrowAnalytics() {
       }
     });
 
-    return Object.entries(conditions).map(([condition, count]) => ({
-      name: condition.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()),
-      value: count,
-    })).filter(c => c.value > 0);
+    return Object.entries(conditions)
+      .map(([condition, count]) => ({
+        name: condition
+          .replace("_", " ")
+          .replace(/\b\w/g, (l) => l.toUpperCase()),
+        value: count,
+      }))
+      .filter((c) => c.value > 0);
   }, [returnRequests]);
 
   const getDepartmentName = (id: string | null) => {
     if (!id) return "—";
-    return departments.find(d => d.id === id)?.name || "—";
+    return departments.find((d) => d.id === id)?.name || "—";
   };
 
   if (isLoading) {
@@ -275,7 +338,9 @@ export default function BorrowAnalytics() {
       <DashboardLayout title="Borrow Analytics" subtitle="Loading...">
         <div className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Skeleton className="h-80" />
@@ -287,7 +352,10 @@ export default function BorrowAnalytics() {
   }
 
   return (
-    <DashboardLayout title="Borrow Analytics" subtitle="Comprehensive borrow & return analysis">
+    <DashboardLayout
+      title="Borrow Analytics"
+      subtitle="Comprehensive borrow & return analysis"
+    >
       <div className="space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -306,7 +374,9 @@ export default function BorrowAnalytics() {
                 <TrendingUp className="h-4 w-4" />
                 Active Borrows
               </CardDescription>
-              <CardTitle className="text-3xl text-info">{stats.activeBorrows}</CardTitle>
+              <CardTitle className="text-3xl text-info">
+                {stats.activeBorrows}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-success/30">
@@ -315,7 +385,9 @@ export default function BorrowAnalytics() {
                 <RotateCcw className="h-4 w-4" />
                 Returned
               </CardDescription>
-              <CardTitle className="text-3xl text-success">{stats.returned}</CardTitle>
+              <CardTitle className="text-3xl text-success">
+                {stats.returned}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-warning/30">
@@ -324,7 +396,9 @@ export default function BorrowAnalytics() {
                 <AlertTriangle className="h-4 w-4" />
                 Damaged/Lost
               </CardDescription>
-              <CardTitle className="text-3xl text-warning">{stats.damaged}</CardTitle>
+              <CardTitle className="text-3xl text-warning">
+                {stats.damaged}
+              </CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -353,15 +427,20 @@ export default function BorrowAnalytics() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Department</Label>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <Select
+                  value={departmentFilter}
+                  onValueChange={setDepartmentFilter}
+                >
                   <SelectTrigger>
                     <Building2 className="h-4 w-4 mr-2" />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map(d => (
-                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -416,22 +495,25 @@ export default function BorrowAnalytics() {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={monthlyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      className="stroke-muted"
+                    />
                     <XAxis dataKey="month" className="text-xs" />
                     <YAxis className="text-xs" />
                     <Tooltip />
                     <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="borrows" 
-                      stroke="#3b82f6" 
+                    <Line
+                      type="monotone"
+                      dataKey="borrows"
+                      stroke="#3b82f6"
                       strokeWidth={2}
                       name="Borrows"
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="returns" 
-                      stroke="#10b981" 
+                    <Line
+                      type="monotone"
+                      dataKey="returns"
+                      stroke="#10b981"
                       strokeWidth={2}
                       name="Returns"
                     />
@@ -448,7 +530,9 @@ export default function BorrowAnalytics() {
                 <PieChartIcon className="h-5 w-5 text-primary" />
                 Department-wise Usage
               </CardTitle>
-              <CardDescription>Borrow distribution by department</CardDescription>
+              <CardDescription>
+                Borrow distribution by department
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
@@ -461,10 +545,15 @@ export default function BorrowAnalytics() {
                         cy="50%"
                         outerRadius={100}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        label={({ name, percent }) =>
+                          `${name} (${(percent * 100).toFixed(0)}%)`
+                        }
                       >
                         {departmentUsage.map((_, index) => (
-                          <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          <Cell
+                            key={index}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -493,17 +582,26 @@ export default function BorrowAnalytics() {
                 {topItems.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={topItems} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-muted"
+                      />
                       <XAxis type="number" className="text-xs" />
-                      <YAxis 
-                        type="category" 
-                        dataKey="name" 
+                      <YAxis
+                        type="category"
+                        dataKey="name"
                         width={100}
                         className="text-xs"
-                        tickFormatter={(value) => value.length > 12 ? value.slice(0, 12) + "..." : value}
+                        tickFormatter={(value) =>
+                          value.length > 12 ? value.slice(0, 12) + "..." : value
+                        }
                       />
                       <Tooltip />
-                      <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                      <Bar
+                        dataKey="count"
+                        fill="#3b82f6"
+                        radius={[0, 4, 4, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -529,16 +627,24 @@ export default function BorrowAnalytics() {
                 {conditionBreakdown.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={conditionBreakdown}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        className="stroke-muted"
+                      />
                       <XAxis dataKey="name" className="text-xs" />
                       <YAxis className="text-xs" />
                       <Tooltip />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                         {conditionBreakdown.map((entry, index) => (
-                          <Cell 
-                            key={index} 
-                            fill={entry.name === "Good" ? "#10b981" : 
-                                  entry.name === "Minor Wear" ? "#f59e0b" : "#ef4444"} 
+                          <Cell
+                            key={index}
+                            fill={
+                              entry.name === "Good"
+                                ? "#10b981"
+                                : entry.name === "Minor Wear"
+                                  ? "#f59e0b"
+                                  : "#ef4444"
+                            }
                           />
                         ))}
                       </Bar>
@@ -583,7 +689,9 @@ export default function BorrowAnalytics() {
                 </TableHeader>
                 <TableBody>
                   {filteredBorrows.slice(0, 50).map((req) => {
-                    const returnReq = returnRequests.find(r => r.borrow_request_id === req.id);
+                    const returnReq = returnRequests.find(
+                      (r) => r.borrow_request_id === req.id,
+                    );
                     return (
                       <TableRow key={req.id}>
                         <TableCell>
@@ -593,21 +701,31 @@ export default function BorrowAnalytics() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm">{getDepartmentName(req.item_department_id)}</span>
+                          <span className="text-sm">
+                            {getDepartmentName(req.item_department_id)}
+                          </span>
                         </TableCell>
                         <TableCell>
-                          <span className="font-medium">{req.item?.name || "—"}</span>
+                          <span className="font-medium">
+                            {req.item?.name || "—"}
+                          </span>
                         </TableCell>
                         <TableCell>{req.quantity || 1}</TableCell>
                         <TableCell>
                           <span className="text-sm">
-                            {format(parseISO(req.requested_start_date), "MMM d, yyyy")}
+                            {format(
+                              parseISO(req.requested_start_date),
+                              "MMM d, yyyy",
+                            )}
                           </span>
                         </TableCell>
                         <TableCell>
                           {returnReq ? (
                             <span className="text-sm">
-                              {format(parseISO(returnReq.return_datetime), "MMM d, yyyy")}
+                              {format(
+                                parseISO(returnReq.return_datetime),
+                                "MMM d, yyyy",
+                              )}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">—</span>

@@ -27,6 +27,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import StudentDashboard from "@/pages/StudentDashboard";
 
 export default function Dashboard() {
   const { userRole } = useUserRole();
@@ -34,24 +35,38 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const stats = useDashboardStats();
 
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Admin';
-  const userInitials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  // Route students to the dedicated student dashboard
+  if (userRole === "student") {
+    return <StudentDashboard />;
+  }
+
+  const userName =
+    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Admin";
+  const userInitials = userName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <DashboardLayout
       title="Dashboard"
       subtitle="Welcome back! Here's your lab overview."
-      userRole={(userRole as "admin" | "staff" | "student" | "technician") || "admin"}
+      userRole={
+        (userRole as "admin" | "staff" | "student" | "technician") || "admin"
+      }
     >
       <div className="space-y-8 pb-8">
-        
         {/* Welcome Header - Professional Clean Design */}
         <div className="flex flex-col gap-4 pb-4 pt-2">
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Professional Avatar */}
             <div className="relative flex-shrink-0">
               <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-blue-600 shadow-md flex items-center justify-center">
-                <span className="text-white text-base sm:text-lg font-bold">{userInitials}</span>
+                <span className="text-white text-base sm:text-lg font-bold">
+                  {userInitials}
+                </span>
               </div>
               <span className="absolute bottom-0 right-0 h-3 w-3 sm:h-3.5 sm:w-3.5 bg-emerald-500 rounded-full ring-2 ring-white"></span>
             </div>
@@ -65,7 +80,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex gap-2 sm:gap-3">
-            <Button 
+            <Button
               size="sm"
               className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl h-10 sm:h-11 px-3 sm:px-5 shadow-lg shadow-blue-500/30 transition-all hover:shadow-xl hover:shadow-blue-500/40 text-xs sm:text-sm"
               onClick={() => navigate("/items/new")}
@@ -73,7 +88,7 @@ export default function Dashboard() {
               <Plus className="h-4 w-4 mr-1.5 sm:mr-2" />
               Add Item
             </Button>
-            <Button 
+            <Button
               size="sm"
               variant="outline"
               className="flex-1 sm:flex-none rounded-xl h-10 sm:h-11 px-3 sm:px-5 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:border-gray-700 dark:hover:bg-gray-800 text-xs sm:text-sm"
@@ -171,8 +186,8 @@ export default function Dashboard() {
         </div>
 
         {/* Charts Section - All Real Data */}
-        <DashboardCharts 
-          monthlyTrends={stats.monthlyTrends} 
+        <DashboardCharts
+          monthlyTrends={stats.monthlyTrends}
           categoryDistribution={stats.categoryDistribution}
           weeklyUsage={stats.weeklyUsage}
           itemStatusDistribution={stats.itemStatusDistribution}
@@ -184,9 +199,11 @@ export default function Dashboard() {
 
         {/* Bottom Section */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          
           {/* Top Borrowed Items */}
-          <div className="dashboard-card animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+          <div
+            className="dashboard-card animate-fade-in-up"
+            style={{ animationDelay: "0.3s" }}
+          >
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-3">
@@ -195,7 +212,12 @@ export default function Dashboard() {
                   </div>
                   Top Borrowed
                 </CardTitle>
-                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg" onClick={() => navigate("/items")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                  onClick={() => navigate("/items")}
+                >
                   View All <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </div>
@@ -203,29 +225,43 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {stats.isLoading ? (
-                  Array(5).fill(0).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 animate-pulse">
-                      <div className="h-10 w-10 rounded-xl bg-gray-100" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-2/3 bg-gray-100 rounded-lg" />
-                        <div className="h-3 w-1/2 bg-gray-100 rounded-lg" />
+                  Array(5)
+                    .fill(0)
+                    .map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-4 animate-pulse"
+                      >
+                        <div className="h-10 w-10 rounded-xl bg-gray-100" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-2/3 bg-gray-100 rounded-lg" />
+                          <div className="h-3 w-1/2 bg-gray-100 rounded-lg" />
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                 ) : stats.topBorrowed.length === 0 ? (
                   <div className="text-center py-8">
                     <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-muted-foreground text-sm">No data available</p>
+                    <p className="text-muted-foreground text-sm">
+                      No data available
+                    </p>
                   </div>
                 ) : (
                   stats.topBorrowed.map((item, index) => (
-                    <div key={index} className="flex items-center gap-4 group p-2 -mx-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div
+                      key={index}
+                      className="flex items-center gap-4 group p-2 -mx-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-500/20">
                         {index + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate group-hover:text-blue-600 transition-colors">{item.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{item.category}</p>
+                        <p className="text-sm font-semibold truncate group-hover:text-blue-600 transition-colors">
+                          {item.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {item.category}
+                        </p>
                       </div>
                       <Badge className="shrink-0 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg px-3 py-1.5 font-semibold">
                         {item.count}
@@ -238,7 +274,10 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Activity */}
-          <div className="dashboard-card animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+          <div
+            className="dashboard-card animate-fade-in-up"
+            style={{ animationDelay: "0.4s" }}
+          >
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-3">
@@ -247,7 +286,12 @@ export default function Dashboard() {
                   </div>
                   Recent Activity
                 </CardTitle>
-                <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg" onClick={() => navigate("/audit-logs")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                  onClick={() => navigate("/audit-logs")}
+                >
                   View All <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </div>
@@ -255,34 +299,53 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {stats.isLoading ? (
-                  Array(5).fill(0).map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 animate-pulse">
-                      <div className="h-3 w-3 rounded-full bg-gray-100" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-full bg-gray-100 rounded-lg" />
-                        <div className="h-3 w-2/3 bg-gray-100 rounded-lg" />
+                  Array(5)
+                    .fill(0)
+                    .map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-4 animate-pulse"
+                      >
+                        <div className="h-3 w-3 rounded-full bg-gray-100" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-full bg-gray-100 rounded-lg" />
+                          <div className="h-3 w-2/3 bg-gray-100 rounded-lg" />
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                 ) : stats.recentActivity.length === 0 ? (
                   <div className="text-center py-8">
                     <Activity className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-muted-foreground text-sm">No recent activity</p>
+                    <p className="text-muted-foreground text-sm">
+                      No recent activity
+                    </p>
                   </div>
                 ) : (
                   stats.recentActivity.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-4 group p-2 -mx-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <div className={`mt-0.5 h-3 w-3 rounded-full shrink-0 ring-4 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 ${
-                        activity.action.includes("create") ? "bg-emerald-500 ring-emerald-100" :
-                        activity.action.includes("update") ? "bg-blue-500 ring-blue-100" :
-                        activity.action.includes("delete") ? "bg-red-500 ring-red-100" : "bg-orange-500 ring-orange-100"
-                      }`} />
+                    <div
+                      key={index}
+                      className="flex items-start gap-4 group p-2 -mx-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
+                      <div
+                        className={`mt-0.5 h-3 w-3 rounded-full shrink-0 ring-4 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 ${
+                          activity.action.includes("create")
+                            ? "bg-emerald-500 ring-emerald-100"
+                            : activity.action.includes("update")
+                              ? "bg-blue-500 ring-blue-100"
+                              : activity.action.includes("delete")
+                                ? "bg-red-500 ring-red-100"
+                                : "bg-orange-500 ring-orange-100"
+                        }`}
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold leading-tight group-hover:text-blue-600 transition-colors">
                           {activity.action}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {activity.entity_type} • {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                          {activity.entity_type} •{" "}
+                          {formatDistanceToNow(new Date(activity.created_at), {
+                            addSuffix: true,
+                          })}
                         </p>
                       </div>
                     </div>
@@ -293,7 +356,10 @@ export default function Dashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="dashboard-card animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+          <div
+            className="dashboard-card animate-fade-in-up"
+            style={{ animationDelay: "0.5s" }}
+          >
             <CardHeader className="pb-4">
               <CardTitle className="text-lg font-semibold flex items-center gap-3">
                 <div className="icon-container purple h-10 w-10 rounded-xl">
@@ -304,8 +370,8 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start h-14 font-medium rounded-xl border-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all"
                   onClick={() => navigate("/items/new")}
                 >
@@ -314,8 +380,8 @@ export default function Dashboard() {
                   </div>
                   Add New Item
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start h-14 font-medium rounded-xl border-2 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all"
                   onClick={() => navigate("/scan")}
                 >
@@ -325,8 +391,8 @@ export default function Dashboard() {
                   Scan QR Code
                 </Button>
                 {["admin", "staff"].includes(userRole || "") && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full justify-start h-14 font-medium rounded-xl border-2 hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition-all"
                     onClick={() => navigate("/requests")}
                   >
@@ -335,12 +401,14 @@ export default function Dashboard() {
                     </div>
                     <span className="flex-1 text-left">Review Requests</span>
                     {stats.pendingRequests > 0 && (
-                      <Badge className="bg-sky-600 text-white rounded-lg">{stats.pendingRequests}</Badge>
+                      <Badge className="bg-sky-600 text-white rounded-lg">
+                        {stats.pendingRequests}
+                      </Badge>
                     )}
                   </Button>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start h-14 font-medium rounded-xl border-2 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all"
                   onClick={() => navigate("/items")}
                 >
@@ -350,7 +418,7 @@ export default function Dashboard() {
                   Search Inventory
                 </Button>
                 {userRole === "admin" && (
-                  <Button 
+                  <Button
                     variant="outline"
                     className="w-full justify-start h-14 font-medium rounded-xl border-2 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-all"
                     onClick={() => navigate("/users")}

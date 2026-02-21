@@ -15,7 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { CalendarIcon, Loader2, HandHeart, Package } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -39,16 +43,21 @@ export function BorrowRequestDialog({
 }: BorrowRequestDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 7));
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    addDays(new Date(), 7),
+  );
   const [quantity, setQuantity] = useState(1);
   const [purpose, setPurpose] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /** Students can borrow at most half the current stock */
+  const maxBorrowable = Math.max(1, Math.floor(availableQuantity / 2));
+
   const handleQuantityChange = (value: string) => {
     const num = parseInt(value, 10);
-    if (!isNaN(num) && num >= 1 && num <= availableQuantity) {
+    if (!isNaN(num) && num >= 1 && num <= maxBorrowable) {
       setQuantity(num);
     } else if (value === "") {
       setQuantity(1);
@@ -74,11 +83,11 @@ export function BorrowRequestDialog({
       return;
     }
 
-    if (quantity < 1 || quantity > availableQuantity) {
+    if (quantity < 1 || quantity > maxBorrowable) {
       toast({
         variant: "destructive",
         title: "Invalid Quantity",
-        description: `Please enter a quantity between 1 and ${availableQuantity}.`,
+        description: `You can borrow between 1 and ${maxBorrowable} (half of ${availableQuantity} in stock).`,
       });
       return;
     }
@@ -108,7 +117,7 @@ export function BorrowRequestDialog({
       setQuantity(1);
       setStartDate(new Date());
       setEndDate(addDays(new Date(), 7));
-      
+
       onSuccess?.();
       onClose();
     } catch (error: any) {
@@ -116,7 +125,8 @@ export function BorrowRequestDialog({
       toast({
         variant: "destructive",
         title: "Submission Failed",
-        description: error.message || "Failed to submit borrow request. Please try again.",
+        description:
+          error.message || "Failed to submit borrow request. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -132,7 +142,8 @@ export function BorrowRequestDialog({
             Request to Borrow
           </DialogTitle>
           <DialogDescription>
-            Submit a request to borrow <strong>{itemName}</strong>. Your request will be reviewed by staff.
+            Submit a request to borrow <strong>{itemName}</strong>. Your request
+            will be reviewed by staff.
           </DialogDescription>
         </DialogHeader>
 
@@ -141,22 +152,25 @@ export function BorrowRequestDialog({
           <div className="space-y-2">
             <Label htmlFor="quantity" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              Quantity
+              Quantity (max {maxBorrowable} of {availableQuantity} in stock)
             </Label>
             <div className="flex items-center gap-2">
               <Input
                 id="quantity"
                 type="number"
                 min={1}
-                max={availableQuantity}
+                max={maxBorrowable}
                 value={quantity}
                 onChange={(e) => handleQuantityChange(e.target.value)}
                 className="w-24"
               />
               <span className="text-sm text-muted-foreground">
-                of {availableQuantity} available
+                of {maxBorrowable} borrowable
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              You may borrow up to half of the current stock
+            </p>
           </div>
 
           {/* Start Date */}
@@ -168,7 +182,7 @@ export function BorrowRequestDialog({
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !startDate && "text-muted-foreground"
+                    !startDate && "text-muted-foreground",
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -196,7 +210,7 @@ export function BorrowRequestDialog({
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !endDate && "text-muted-foreground"
+                    !endDate && "text-muted-foreground",
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />

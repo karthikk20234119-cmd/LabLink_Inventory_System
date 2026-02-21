@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +38,21 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FlaskConical, Search, AlertTriangle, Package, Thermometer, Droplets, Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import {
+  FlaskConical,
+  Search,
+  AlertTriangle,
+  Package,
+  Thermometer,
+  Droplets,
+  Plus,
+  Edit,
+  Trash2,
+  Loader2,
+  Shield,
+} from "lucide-react";
+import { SDSViewer } from "@/components/chemicals/SDSViewer";
+import { InlineHazardInfo } from "@/components/chemicals/InlineHazardInfo";
 
 interface Chemical {
   id: string;
@@ -89,6 +109,10 @@ export default function Chemicals() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingChemical, setEditingChemical] = useState<Chemical | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
+  const [sdsChemical, setSdsChemical] = useState<{
+    name: string;
+    cas: string | null;
+  } | null>(null);
 
   useEffect(() => {
     fetchChemicals();
@@ -172,14 +196,18 @@ export default function Chemicals() {
           .eq("id", editingChemical.id);
 
         if (error) throw error;
-        toast({ title: "Success", description: "Chemical updated successfully" });
+        toast({
+          title: "Success",
+          description: "Chemical updated successfully",
+        });
       } else {
-        const { error } = await supabase
-          .from("chemicals")
-          .insert(chemicalData);
+        const { error } = await supabase.from("chemicals").insert(chemicalData);
 
         if (error) throw error;
-        toast({ title: "Success", description: "Chemical created successfully" });
+        toast({
+          title: "Success",
+          description: "Chemical created successfully",
+        });
       }
 
       setDialogOpen(false);
@@ -247,19 +275,23 @@ export default function Chemicals() {
       chem.name?.toLowerCase().includes(query) ||
       (chem.cas_number && chem.cas_number.toLowerCase().includes(query)) ||
       (chem.formula && chem.formula.toLowerCase().includes(query)) ||
-      (chem.storage_location && chem.storage_location.toLowerCase().includes(query)) ||
+      (chem.storage_location &&
+        chem.storage_location.toLowerCase().includes(query)) ||
       (chem.supplier_name && chem.supplier_name.toLowerCase().includes(query))
     );
   });
 
-  const lowStockCount = chemicals.filter(c => 
-    c.minimum_quantity && c.current_quantity <= c.minimum_quantity
+  const lowStockCount = chemicals.filter(
+    (c) => c.minimum_quantity && c.current_quantity <= c.minimum_quantity,
   ).length;
 
-  const hazardousCount = chemicals.filter(c => c.hazard_type_id).length;
+  const hazardousCount = chemicals.filter((c) => c.hazard_type_id).length;
 
   return (
-    <DashboardLayout title="Chemicals" subtitle="Manage laboratory chemicals inventory">
+    <DashboardLayout
+      title="Chemicals"
+      subtitle="Manage laboratory chemicals inventory"
+    >
       <div className="space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -278,7 +310,9 @@ export default function Chemicals() {
                 <Package className="h-4 w-4" />
                 Low Stock
               </CardDescription>
-              <CardTitle className="text-2xl text-warning">{lowStockCount}</CardTitle>
+              <CardTitle className="text-2xl text-warning">
+                {lowStockCount}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
@@ -287,7 +321,9 @@ export default function Chemicals() {
                 <AlertTriangle className="h-4 w-4" />
                 Hazardous
               </CardDescription>
-              <CardTitle className="text-2xl text-destructive">{hazardousCount}</CardTitle>
+              <CardTitle className="text-2xl text-destructive">
+                {hazardousCount}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
@@ -297,7 +333,7 @@ export default function Chemicals() {
                 Requires Special Storage
               </CardDescription>
               <CardTitle className="text-2xl">
-                {chemicals.filter(c => c.storage_conditions).length}
+                {chemicals.filter((c) => c.storage_conditions).length}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -314,7 +350,12 @@ export default function Chemicals() {
               className="pl-10"
             />
           </div>
-          <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+          <Button
+            onClick={() => {
+              resetForm();
+              setDialogOpen(true);
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Chemical
           </Button>
@@ -328,7 +369,8 @@ export default function Chemicals() {
               Chemicals Inventory
             </CardTitle>
             <CardDescription>
-              {filteredChemicals.length} chemical{filteredChemicals.length !== 1 ? "s" : ""}
+              {filteredChemicals.length} chemical
+              {filteredChemicals.length !== 1 ? "s" : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -356,6 +398,7 @@ export default function Chemicals() {
                     <TableHead>Hazard</TableHead>
                     <TableHead>Storage</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>SDS</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -374,7 +417,9 @@ export default function Chemicals() {
                             <p className="font-mono text-sm">{chem.formula}</p>
                           )}
                           {chem.cas_number && (
-                            <p className="text-xs text-muted-foreground">CAS: {chem.cas_number}</p>
+                            <p className="text-xs text-muted-foreground">
+                              CAS: {chem.cas_number}
+                            </p>
                           )}
                           {!chem.formula && !chem.cas_number && "—"}
                         </div>
@@ -383,18 +428,29 @@ export default function Chemicals() {
                         <div className="flex items-center gap-1">
                           <Droplets className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>{chem.current_quantity}</span>
-                          <span className="text-muted-foreground">{chem.unit || "units"}</span>
+                          <span className="text-muted-foreground">
+                            {chem.unit || "units"}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {chem.hazard_type_id ? (
-                          <Badge className="bg-warning/10 text-warning border-warning/20">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            {getHazardTypeName(chem.hazard_type_id) || "Hazardous"}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        <div className="space-y-1.5">
+                          {chem.hazard_type_id ? (
+                            <Badge className="bg-warning/10 text-warning border-warning/20">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              {getHazardTypeName(chem.hazard_type_id) ||
+                                "Hazardous"}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                          {(chem.cas_number || chem.name) && (
+                            <InlineHazardInfo
+                              chemicalName={chem.name}
+                              casNumber={chem.cas_number}
+                            />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {chem.storage_conditions ? (
@@ -402,24 +458,54 @@ export default function Chemicals() {
                             {chem.storage_conditions}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">Standard</span>
+                          <span className="text-muted-foreground">
+                            Standard
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>
                         {chem.is_expired ? (
-                          <Badge className="bg-destructive/10 text-destructive">Expired</Badge>
+                          <Badge className="bg-destructive/10 text-destructive">
+                            Expired
+                          </Badge>
                         ) : chem.is_active ? (
-                          <Badge className="bg-success/10 text-success">Active</Badge>
+                          <Badge className="bg-success/10 text-success">
+                            Active
+                          </Badge>
                         ) : (
                           <Badge variant="secondary">Inactive</Badge>
                         )}
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() =>
+                            setSdsChemical({
+                              name: chem.name,
+                              cas: chem.cas_number,
+                            })
+                          }
+                        >
+                          <Shield className="h-3 w-3" />
+                          View SDS
+                        </Button>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(chem)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(chem)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(chem.id)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(chem.id)}
+                          >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -442,10 +528,12 @@ export default function Chemicals() {
               {editingChemical ? "Edit Chemical" : "Add Chemical"}
             </DialogTitle>
             <DialogDescription>
-              {editingChemical ? "Update chemical details" : "Add a new chemical to the inventory"}
+              {editingChemical
+                ? "Update chemical details"
+                : "Add a new chemical to the inventory"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6 py-4">
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -454,7 +542,9 @@ export default function Chemicals() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="e.g., Sodium Chloride"
                 />
               </div>
@@ -463,7 +553,9 @@ export default function Chemicals() {
                 <Input
                   id="formula"
                   value={formData.formula}
-                  onChange={(e) => setFormData({ ...formData, formula: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, formula: e.target.value })
+                  }
                   placeholder="e.g., NaCl"
                   className="font-mono"
                 />
@@ -476,7 +568,9 @@ export default function Chemicals() {
                 <Input
                   id="cas_number"
                   value={formData.cas_number}
-                  onChange={(e) => setFormData({ ...formData, cas_number: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cas_number: e.target.value })
+                  }
                   placeholder="e.g., 7647-14-5"
                 />
               </div>
@@ -484,7 +578,9 @@ export default function Chemicals() {
                 <Label htmlFor="hazard_type">Hazard Type</Label>
                 <Select
                   value={formData.hazard_type_id}
-                  onValueChange={(value) => setFormData({ ...formData, hazard_type_id: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, hazard_type_id: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select hazard type" />
@@ -494,7 +590,10 @@ export default function Chemicals() {
                     {hazardTypes.map((ht) => (
                       <SelectItem key={ht.id} value={ht.id}>
                         <span className="flex items-center gap-2">
-                          <AlertTriangle className="h-3 w-3" style={{ color: ht.color_hex }} />
+                          <AlertTriangle
+                            className="h-3 w-3"
+                            style={{ color: ht.color_hex }}
+                          />
                           {ht.name} ({ht.code})
                         </span>
                       </SelectItem>
@@ -509,7 +608,9 @@ export default function Chemicals() {
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 placeholder="Enter chemical description..."
                 className="min-h-[80px]"
               />
@@ -525,14 +626,21 @@ export default function Chemicals() {
                   min={0}
                   step="0.001"
                   value={formData.current_quantity}
-                  onChange={(e) => setFormData({ ...formData, current_quantity: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      current_quantity: parseFloat(e.target.value) || 0,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit">Unit</Label>
                 <Select
                   value={formData.unit}
-                  onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, unit: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select unit" />
@@ -555,7 +663,12 @@ export default function Chemicals() {
                   min={0}
                   step="0.001"
                   value={formData.minimum_quantity}
-                  onChange={(e) => setFormData({ ...formData, minimum_quantity: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      minimum_quantity: parseFloat(e.target.value) || 0,
+                    })
+                  }
                 />
               </div>
             </div>
@@ -567,7 +680,12 @@ export default function Chemicals() {
                 <Input
                   id="storage_location"
                   value={formData.storage_location}
-                  onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      storage_location: e.target.value,
+                    })
+                  }
                   placeholder="e.g., Cabinet A, Shelf 2"
                 />
               </div>
@@ -577,7 +695,9 @@ export default function Chemicals() {
                   id="expiry_date"
                   type="date"
                   value={formData.expiry_date}
-                  onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, expiry_date: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -587,7 +707,12 @@ export default function Chemicals() {
               <Textarea
                 id="storage_conditions"
                 value={formData.storage_conditions}
-                onChange={(e) => setFormData({ ...formData, storage_conditions: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    storage_conditions: e.target.value,
+                  })
+                }
                 placeholder="e.g., Store in cool, dry place away from direct sunlight"
                 className="min-h-[60px]"
               />
@@ -600,7 +725,9 @@ export default function Chemicals() {
                 <Input
                   id="supplier_name"
                   value={formData.supplier_name}
-                  onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, supplier_name: e.target.value })
+                  }
                   placeholder="e.g., Fisher Scientific"
                 />
               </div>
@@ -609,7 +736,12 @@ export default function Chemicals() {
                 <Input
                   id="supplier_contact"
                   value={formData.supplier_contact}
-                  onChange={(e) => setFormData({ ...formData, supplier_contact: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      supplier_contact: e.target.value,
+                    })
+                  }
                   placeholder="e.g., contact@supplier.com"
                 />
               </div>
@@ -618,7 +750,9 @@ export default function Chemicals() {
                 <Input
                   id="batch_number"
                   value={formData.batch_number}
-                  onChange={(e) => setFormData({ ...formData, batch_number: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, batch_number: e.target.value })
+                  }
                   placeholder="e.g., LOT-2024-001"
                 />
               </div>
@@ -626,7 +760,11 @@ export default function Chemicals() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
@@ -635,13 +773,27 @@ export default function Chemicals() {
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {editingChemical ? "Updating..." : "Creating..."}
                 </>
+              ) : editingChemical ? (
+                "Update"
               ) : (
-                editingChemical ? "Update" : "Create"
+                "Create"
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* SDS Viewer Dialog */}
+      {sdsChemical && (
+        <SDSViewer
+          chemicalName={sdsChemical.name}
+          casNumber={sdsChemical.cas}
+          open={!!sdsChemical}
+          onOpenChange={(open) => {
+            if (!open) setSdsChemical(null);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
