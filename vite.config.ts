@@ -56,6 +56,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         // Pre-cache key app shell resources
         globPatterns: ["**/*.{js,css,html,ico,png,jpg,svg,woff,woff2}"],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Runtime caching strategies
         runtimeCaching: [
           {
