@@ -174,10 +174,26 @@ export default function Maintenance() {
 
   const fetchTechnicians = async () => {
     try {
+      // First, fetch user IDs that have the roles we're looking for
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["admin", "staff", "technician"]);
+
+      if (roleError) throw roleError;
+
+      if (!roleData || roleData.length === 0) {
+        setTechnicians([]);
+        return;
+      }
+
+      const userIds = roleData.map((r) => r.user_id);
+
+      // Now fetch profiles for those user IDs
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name")
-        .in("role", ["admin", "staff", "technician"])
+        .in("id", userIds)
         .order("full_name");
 
       if (error) throw error;
