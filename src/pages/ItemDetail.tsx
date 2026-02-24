@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -373,6 +373,7 @@ function ImageGallery({
           {allImages.length > 1 && (
             <>
               <button
+                title="Previous image"
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePrevious();
@@ -382,6 +383,7 @@ function ImageGallery({
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
+                title="Next image"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleNext();
@@ -518,8 +520,15 @@ function AvailabilityCard({
   issuedCount: number;
   maintenanceCount: number;
 }) {
-  const percentage =
-    totalCount > 0 ? Math.round((availableCount / totalCount) * 100) : 0;
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (progressRef.current) {
+      const percentage =
+        totalCount > 0 ? Math.round((availableCount / totalCount) * 100) : 0;
+      progressRef.current.style.width = `${percentage}%`;
+    }
+  }, [availableCount, totalCount]);
 
   return (
     <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
@@ -529,15 +538,16 @@ function AvailabilityCard({
           Availability
         </h3>
         <span className="text-2xl font-bold text-emerald-600">
-          {percentage}%
+          {totalCount > 0 ? Math.round((availableCount / totalCount) * 100) : 0}
+          %
         </span>
       </div>
 
       {/* Progress Bar */}
       <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
         <div
+          ref={progressRef}
           className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
-          style={{ width: `${percentage}%` }}
         />
       </div>
 

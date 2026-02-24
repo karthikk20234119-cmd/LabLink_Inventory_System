@@ -1,15 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
-// OpenRouter API configuration
-// OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+// Groq API configuration
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
-// Free models with fallback - Prioritized for speed
-const FREE_MODELS = [
-  "google/gemma-3-4b-it:free",
-  "deepseek/deepseek-r1-0528:free",
-  "openai/gpt-oss-120b:free",
+// High-performance Groq models
+const GROQ_MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "mixtral-8x7b-32768",
 ];
 
 export interface ChatMessage {
@@ -178,25 +177,23 @@ export async function sendChatMessage(
     ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
-  console.log("Sending request to OpenRouter with models:", FREE_MODELS);
+  console.log("Sending request to Groq with models:", GROQ_MODELS);
 
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.includes("placeholder")) {
-    console.error("OpenRouter API Key is missing or invalid");
-    return "Configuration Error: OpenRouter API Key is missing.";
+  if (!GROQ_API_KEY || GROQ_API_KEY.includes("placeholder")) {
+    console.error("Groq API Key is missing or invalid");
+    return "Configuration Error: Groq API Key is missing.";
   }
 
   let lastError = "";
 
-  for (const model of FREE_MODELS) {
+  for (const model of GROQ_MODELS) {
     try {
       console.log(`Trying model: ${model}`);
-      const response = await fetch(OPENROUTER_ENDPOINT, {
+      const response = await fetch(GROQ_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "HTTP-Referer": window.location.origin,
-          "X-Title": "LabLink",
+          Authorization: `Bearer ${GROQ_API_KEY}`,
         },
         body: JSON.stringify({
           model: model,
@@ -229,7 +226,7 @@ export async function sendChatMessage(
 }
 
 /**
- * Stream chat response from OpenRouter
+ * Stream chat response from Groq
  */
 export async function streamChatMessage(
   messages: ChatMessage[],
@@ -245,22 +242,20 @@ export async function streamChatMessage(
     ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY.includes("placeholder")) {
-    onChunk("Configuration Error: OpenRouter API Key is missing.");
+  if (!GROQ_API_KEY || GROQ_API_KEY.includes("placeholder")) {
+    onChunk("Configuration Error: Groq API Key is missing.");
     return;
   }
 
   // Use the primary model for streaming to ensure best performance
-  const model = FREE_MODELS[0];
+  const model = GROQ_MODELS[0];
 
   try {
-    const response = await fetch(OPENROUTER_ENDPOINT, {
+    const response = await fetch(GROQ_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": window.location.origin,
-        "X-Title": "LabLink",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
       },
       body: JSON.stringify({
         model: model,

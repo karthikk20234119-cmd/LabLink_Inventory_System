@@ -22,6 +22,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import {
   ResponsiveContainer,
@@ -38,6 +39,23 @@ import {
   ComposedChart,
 } from "recharts";
 
+// Helper component to avoid inline styles for colors
+const ColorIndicator = ({
+  color,
+  className = "",
+}: {
+  color: string;
+  className?: string;
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.backgroundColor = color;
+    }
+  }, [color]);
+  return <div ref={ref} className={className} />;
+};
+
 // Custom tooltip
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -53,9 +71,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
               className="flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-2">
-                <div
+                <ColorIndicator
+                  color={entry.color}
                   className="w-3 h-3 rounded-full shadow-sm"
-                  style={{ backgroundColor: entry.color }}
                 />
                 <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
                   {entry.name}
@@ -80,9 +98,9 @@ const PieTooltip = ({ active, payload }: any) => {
     return (
       <div className="bg-white dark:bg-gray-800 backdrop-blur-xl p-4 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 min-w-[140px]">
         <div className="flex items-center gap-3 mb-2">
-          <div
+          <ColorIndicator
+            color={data.payload.color}
             className="w-4 h-4 rounded-full shadow-sm"
-            style={{ backgroundColor: data.payload.color }}
           />
           <span className="text-sm font-bold text-gray-900 dark:text-white">
             {data.name}
@@ -333,9 +351,9 @@ export default function StudentDashboard() {
                         key={index}
                         className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
                       >
-                        <div
+                        <ColorIndicator
+                          color={item.color}
                           className="w-3 h-3 rounded-full shadow-sm"
-                          style={{ backgroundColor: item.color }}
                         />
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
                           {item.name}
@@ -364,10 +382,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* Monthly Borrow Trends */}
-          <div
-            className="dashboard-card animate-fade-in-up"
-            style={{ animationDelay: "0.1s" }}
-          >
+          <div className="dashboard-card animate-in fade-in slide-in-from-bottom-4 duration-700 delay-[100ms] fill-mode-both">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-semibold flex items-center gap-3">
                 <div className="icon-container blue h-11 w-11 rounded-xl flex items-center justify-center">
@@ -506,10 +521,7 @@ export default function StudentDashboard() {
         {/* Bottom Section: Recent Requests, Active Borrows, Quick Actions */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {/* Recent Borrow Requests */}
-          <div
-            className="dashboard-card animate-fade-in-up"
-            style={{ animationDelay: "0.2s" }}
-          >
+          <div className="dashboard-card animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[200ms] fill-mode-both">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-3">
@@ -597,10 +609,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* Active Borrows */}
-          <div
-            className="dashboard-card animate-fade-in-up"
-            style={{ animationDelay: "0.3s" }}
-          >
+          <div className="dashboard-card animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[300ms] fill-mode-both">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-3">
@@ -689,10 +698,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* Quick Actions + Notifications */}
-          <div
-            className="dashboard-card animate-fade-in-up"
-            style={{ animationDelay: "0.4s" }}
-          >
+          <div className="dashboard-card animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[400ms] fill-mode-both">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg font-semibold flex items-center gap-3">
                 <div className="icon-container purple h-10 w-10 rounded-xl">

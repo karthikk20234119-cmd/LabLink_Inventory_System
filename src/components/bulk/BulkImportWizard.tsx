@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
@@ -54,6 +55,12 @@ import {
   Globe,
   Sparkles,
   Building2,
+  ImageIcon,
+  Plus,
+  X,
+  Eye,
+  Search,
+  CheckSquare,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -212,7 +219,16 @@ const FIELD_ALIASES: Record<string, string[]> = {
   asset_tag: ["asset tag", "asset_tag", "asset id", "tag"],
   barcode: ["barcode", "bar code", "upc", "ean"],
   item_type: ["item type", "item_type", "type", "category"],
-  model_number: ["model", "model number", "model_number"],
+  model_number: [
+    "model",
+    "model number",
+    "model_number",
+    "catalog number",
+    "catalog_number",
+    "cat no",
+    "part number",
+    "part_number",
+  ],
   brand: ["brand", "manufacturer", "make"],
   unit: ["unit", "uom", "unit of measure"],
   current_quantity: [
@@ -622,6 +638,25 @@ export function BulkImportWizard({
     Record<number, Record<string, { value: any; source: string }>>
   >({});
   const [enrichmentDone, setEnrichmentDone] = useState(false);
+  // Per-item enrichment progress
+  const [enrichProgress, setEnrichProgress] = useState({
+    current: 0,
+    total: 0,
+  });
+  // Per-item image search status from edge function
+  const [imageSearchStatus, setImageSearchStatus] = useState<
+    Record<number, "found" | "partial" | "not_found">
+  >({});
+  // Per-item selected images: { idx: [{url, source, width?, height?}] }
+  const [selectedImages, setSelectedImages] = useState<
+    Record<
+      number,
+      Array<{ url: string; source: string; width?: number; height?: number }>
+    >
+  >({});
+  const [manualImageUrl, setManualImageUrl] = useState<Record<number, string>>(
+    {},
+  );
 
   // Fetch departments and current user on mount
   useEffect(() => {
@@ -665,6 +700,8 @@ export function BulkImportWizard({
     setEnrichedFields({});
     setEnrichmentDone(false);
     setIsEnriching(false);
+    setSelectedImages({});
+    setManualImageUrl({});
   };
 
   // ─── File Handling ───────────────────────────────────────────────────────
@@ -835,10 +872,9 @@ export function BulkImportWizard({
     const result = new Set<string>();
     for (let i = 0; i < values.length; i += chunkSize) {
       const chunk = values.slice(i, i + chunkSize);
-      const { data, error } = await (supabase
-        .from("items")
+      const { data, error } = await (supabase.from("items") as any)
         .select(column)
-        .in(column, chunk) as any);
+        .in(column, chunk);
       if (error) {
         console.error(`queryInChunks error for ${column}:`, error.message);
         continue;
@@ -994,10 +1030,17 @@ export function BulkImportWizard({
     const codeField = Object.entries(columnMapping).find(
       ([, v]) => v === "item_code",
     )?.[0];
+    const modelField = Object.entries(columnMapping).find(
+      ([, v]) => v === "model_number",
+    )?.[0];
 
     // Collect items needing enrichment
-    const itemsToEnrich: Array<{ idx: number; name: string; brand?: string }> =
-      [];
+    const itemsToEnrich: Array<{
+      idx: number;
+      name: string;
+      brand?: string;
+      catalog_number?: string;
+    }> = [];
     rawData.forEach((row, idx) => {
       const name = nameField ? String(row[nameField] || "").trim() : "";
       if (!name) return;
@@ -1008,9 +1051,13 @@ export function BulkImportWizard({
           idx,
           name,
           brand: brandField ? String(row[brandField] || "").trim() : undefined,
+          catalog_number: modelField
+            ? String(row[modelField] || "").trim()
+            : undefined,
         });
       }
     });
+    setEnrichProgress({ current: 0, total: itemsToEnrich.length });
 
     try {
       // Try Edge Function first
@@ -1023,6 +1070,7 @@ export function BulkImportWizard({
               items: itemsToEnrich.map((i) => ({
                 name: i.name,
                 brand: i.brand,
+                catalog_number: i.catalog_number,
               })),
             },
           },
@@ -1035,7 +1083,16 @@ export function BulkImportWizard({
       }
 
       // Apply enrichments
+      const newSelectedImages: Record<
+        number,
+        Array<{ url: string; source: string; width?: number; height?: number }>
+      > = {};
+      const newImageSearchStatus: Record<
+        number,
+        "found" | "partial" | "not_found"
+      > = {};
       itemsToEnrich.forEach((item, i) => {
+        setEnrichProgress({ current: i + 1, total: itemsToEnrich.length });
         const online = onlineResults[i];
         const enrichments: Record<string, { value: any; source: string }> = {};
         const desc = descField
@@ -1053,11 +1110,55 @@ export function BulkImportWizard({
           };
         }
 
-        // Image
+        // Primary image
         if (online?.image_url) {
           enrichments.image_url = {
             value: online.image_url,
             source: online.source || "online",
+          };
+        }
+
+        // Multiple images — now stored as rich objects {url, source, width?, height?}
+        if (online?.image_urls && online.image_urls.length > 0) {
+          // image_urls comes as array of {url, source, width?, height?} from edge func
+          const allImgs = online.image_urls.map((img: any) =>
+            typeof img === "string"
+              ? { url: img, source: online.source || "online" }
+              : {
+                  url: img.url,
+                  source: img.source || "online",
+                  width: img.width,
+                  height: img.height,
+                },
+          );
+          enrichments.all_images = {
+            value: allImgs,
+            source: online.source || "online",
+          };
+          // Auto-select all fetched images
+          newSelectedImages[item.idx] = allImgs;
+          if (allImgs.length > 1) {
+            enrichments.sub_images = {
+              value: allImgs.slice(1).map((img: any) => img.url),
+              source: online.source || "online",
+            };
+          }
+        }
+
+        // Track image search status
+        newImageSearchStatus[item.idx] =
+          online?.image_search_status ||
+          (online?.image_urls?.length >= 5
+            ? "found"
+            : online?.image_urls?.length > 0
+              ? "partial"
+              : "not_found");
+
+        // Suggested quantity
+        if (online?.suggested_quantity && online.suggested_quantity > 1) {
+          enrichments.current_quantity = {
+            value: online.suggested_quantity,
+            source: "heuristic",
           };
         }
 
@@ -1096,6 +1197,8 @@ export function BulkImportWizard({
       });
 
       setEnrichedFields(newEnriched);
+      setSelectedImages(newSelectedImages);
+      setImageSearchStatus(newImageSearchStatus);
       setEnrichmentDone(true);
 
       const totalEnriched = Object.keys(newEnriched).length;
@@ -1103,9 +1206,12 @@ export function BulkImportWizard({
         (e) => e.description,
       ).length;
       const imgs = Object.values(newEnriched).filter((e) => e.image_url).length;
+      const multiImgs = Object.values(newEnriched).filter(
+        (e) => e.sub_images,
+      ).length;
       toast({
         title: "Enrichment Complete",
-        description: `${totalEnriched} items enriched: ${descs} descriptions, ${imgs} images found.`,
+        description: `${totalEnriched} items enriched: ${descs} descriptions, ${imgs} images (${multiImgs} with multiple).`,
       });
     } catch (err: any) {
       console.error("Enrichment error:", err);
@@ -1174,9 +1280,25 @@ export function BulkImportWizard({
     const rowEnrichments = enrichedFields[rowIdx];
     if (rowEnrichments) {
       for (const [field, enrichment] of Object.entries(rowEnrichments)) {
+        // Skip image fields — we handle them from selectedImages below
+        if (
+          field === "image_url" ||
+          field === "sub_images" ||
+          field === "all_images"
+        )
+          continue;
         if (!mapped[field] || mapped[field] === null || mapped[field] === "") {
           mapped[field] = enrichment.value;
         }
+      }
+    }
+
+    // Apply selected images from the gallery UI
+    const rowImages = selectedImages[rowIdx];
+    if (rowImages && rowImages.length > 0) {
+      mapped.image_url = rowImages[0].url;
+      if (rowImages.length > 1) {
+        mapped.sub_images = rowImages.slice(1).map((img) => img.url);
       }
     }
 
@@ -1397,6 +1519,119 @@ export function BulkImportWizard({
           "An unexpected error occurred during import. Please try again.",
       });
     } finally {
+      // ─── Download images to Supabase Storage & save to item_images ────
+      if (inserted + updated > 0 && Object.keys(selectedImages).length > 0) {
+        try {
+          const nameField = Object.entries(columnMapping).find(
+            ([, v]) => v === "name",
+          )?.[0];
+          const codeField = Object.entries(columnMapping).find(
+            ([, v]) => v === "item_code",
+          )?.[0];
+
+          for (const [idxStr, imgs] of Object.entries(selectedImages)) {
+            if (!imgs || imgs.length === 0) continue;
+            const rowIdx = parseInt(idxStr);
+            const row = rawData[rowIdx];
+            if (!row) continue;
+
+            let itemId: string | null = null;
+            const itemCode = codeField
+              ? String(row[codeField] || "").trim()
+              : "";
+            const itemName = nameField
+              ? String(row[nameField] || "").trim()
+              : "";
+
+            if (itemCode) {
+              const { data } = await supabase
+                .from("items")
+                .select("id")
+                .eq("item_code", itemCode)
+                .limit(1)
+                .maybeSingle();
+              if (data) itemId = data.id;
+            }
+            if (!itemId && itemName) {
+              const { data } = await supabase
+                .from("items")
+                .select("id")
+                .eq("name", itemName)
+                .eq("department_id", selectedDepartmentId || departmentId)
+                .limit(1)
+                .maybeSingle();
+              if (data) itemId = data.id;
+            }
+
+            if (itemId) {
+              const imageRecords: any[] = [];
+              for (let i = 0; i < imgs.length && i < 5; i++) {
+                const img = imgs[i];
+                let storagePath = "";
+                try {
+                  // Download image from Wikimedia URL
+                  const imgResp = await fetch(img.url);
+                  if (!imgResp.ok) throw new Error(`HTTP ${imgResp.status}`);
+                  const blob = await imgResp.blob();
+                  const ext =
+                    img.url
+                      .match(/\.(jpe?g|png|webp)/i)?.[1]
+                      ?.replace("jpeg", "jpg") || "jpg";
+                  storagePath = `${itemId}/${i}.${ext}`;
+
+                  // Upload to Supabase Storage
+                  const { error: uploadErr } = await supabase.storage
+                    .from("item-images")
+                    .upload(storagePath, blob, {
+                      contentType: blob.type || "image/jpeg",
+                      upsert: true,
+                    });
+                  if (uploadErr) throw uploadErr;
+
+                  // Get public URL
+                  const { data: urlData } = supabase.storage
+                    .from("item-images")
+                    .getPublicUrl(storagePath);
+
+                  imageRecords.push({
+                    item_id: itemId,
+                    image_url: urlData.publicUrl,
+                    is_primary: i === 0,
+                    image_type: img.source === "manual" ? "manual" : "auto",
+                    source: "wikimedia_auto",
+                    sort_order: i,
+                    uploaded_by: currentUserId,
+                  });
+                } catch (dlErr) {
+                  console.warn(
+                    `Failed to download image ${i} for item ${itemId}:`,
+                    dlErr,
+                  );
+                  // Fallback: save external URL if download fails
+                  imageRecords.push({
+                    item_id: itemId,
+                    image_url: img.url,
+                    is_primary: i === 0,
+                    image_type: img.source === "manual" ? "manual" : "auto",
+                    source: img.source,
+                    sort_order: i,
+                    uploaded_by: currentUserId,
+                  });
+                }
+              }
+              if (imageRecords.length > 0) {
+                await supabase
+                  .from("item_images" as any)
+                  .insert(imageRecords as any);
+              }
+            }
+          }
+          console.log("item_images records saved to storage successfully");
+        } catch (imgErr) {
+          console.warn("Failed to save item_images records:", imgErr);
+        }
+      }
+
       setImportProgress(100);
       setImportResults({ inserted, updated, skipped, failed, failedRows });
       setStep("import");
@@ -1637,6 +1872,7 @@ export function BulkImportWizard({
                 <input
                   id="bulk-file-input"
                   type="file"
+                  title="Upload file"
                   accept=".csv,.xlsx,.xls"
                   className="hidden"
                   onChange={handleFileInput}
@@ -1750,9 +1986,9 @@ export function BulkImportWizard({
                     Auto-Enrich Missing Fields
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Fetch descriptions, images, and details from Wikipedia &
-                    DuckDuckGo. Also auto-generates item codes and infers item
-                    types and safety levels.
+                    Fetch descriptions and <strong>5 product images</strong> per
+                    item from Wikimedia Commons. Also auto-generates item codes
+                    and infers item types and safety levels.
                   </p>
                 </div>
                 <Button
@@ -1776,101 +2012,414 @@ export function BulkImportWizard({
                     </>
                   )}
                 </Button>
-                {!enrichmentDone && (
+                {isEnriching && enrichProgress.total > 0 && (
+                  <div className="w-full max-w-md mx-auto space-y-1">
+                    <Progress
+                      value={Math.round(
+                        (enrichProgress.current / enrichProgress.total) * 100,
+                      )}
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground text-center">
+                      Processing item {enrichProgress.current} of{" "}
+                      {enrichProgress.total}
+                    </p>
+                  </div>
+                )}
+                {!enrichmentDone && !isEnriching && (
                   <p className="text-xs text-muted-foreground">
                     You can also skip this step and proceed directly to preview.
                   </p>
                 )}
               </div>
 
-              {/* Enrichment results summary */}
+              {/* Enrichment results — Interactive Image Gallery */}
               {enrichmentDone && Object.keys(enrichedFields).length > 0 && (
                 <div className="p-4 rounded-lg border bg-card space-y-3">
-                  <p className="text-sm font-medium flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
-                    Enrichment Summary
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-300">
-                      {
-                        Object.values(enrichedFields).filter(
-                          (e) => e.description,
-                        ).length
-                      }{" "}
-                      descriptions
-                    </Badge>
-                    <Badge className="bg-blue-500/10 text-blue-600 border-blue-300">
-                      {
-                        Object.values(enrichedFields).filter((e) => e.image_url)
-                          .length
-                      }{" "}
-                      images
-                    </Badge>
-                    <Badge className="bg-purple-500/10 text-purple-600 border-purple-300">
-                      {
-                        Object.values(enrichedFields).filter((e) => e.item_code)
-                          .length
-                      }{" "}
-                      item codes
-                    </Badge>
-                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-300">
-                      {
-                        Object.values(enrichedFields).filter((e) => e.item_type)
-                          .length
-                      }{" "}
-                      item types
-                    </Badge>
-                    <Badge className="bg-rose-500/10 text-rose-600 border-rose-300">
-                      {
-                        Object.values(enrichedFields).filter(
-                          (e) => e.safety_level,
-                        ).length
-                      }{" "}
-                      safety levels
-                    </Badge>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-amber-500" />
+                      Enrichment Results — Select Images
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-300">
+                        {
+                          Object.values(enrichedFields).filter(
+                            (e) => e.description,
+                          ).length
+                        }{" "}
+                        descriptions
+                      </Badge>
+                      <Badge className="bg-blue-500/10 text-blue-600 border-blue-300">
+                        {Object.values(selectedImages).reduce(
+                          (sum, imgs) => sum + imgs.length,
+                          0,
+                        )}{" "}
+                        images selected
+                      </Badge>
+                      {(() => {
+                        const total = Object.keys(enrichedFields).length;
+                        const full = Object.entries(imageSearchStatus).filter(
+                          ([, s]) => s === "found",
+                        ).length;
+                        const partial = Object.entries(
+                          imageSearchStatus,
+                        ).filter(([, s]) => s === "partial").length;
+                        const none = Object.entries(imageSearchStatus).filter(
+                          ([, s]) => s === "not_found",
+                        ).length;
+                        return (
+                          <>
+                            {full > 0 && (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-300 gap-1">
+                                <CircleCheck className="h-3 w-3" /> {full} 5/5
+                              </Badge>
+                            )}
+                            {partial > 0 && (
+                              <Badge className="bg-amber-500/10 text-amber-600 border-amber-300 gap-1">
+                                <CircleAlert className="h-3 w-3" /> {partial}{" "}
+                                partial
+                              </Badge>
+                            )}
+                            {none > 0 && (
+                              <Badge className="bg-red-500/10 text-red-600 border-red-300 gap-1">
+                                <CircleAlert className="h-3 w-3" /> {none} no
+                                images
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      })()}
+                      <Badge className="bg-purple-500/10 text-purple-600 border-purple-300">
+                        {
+                          Object.values(enrichedFields).filter(
+                            (e) => e.item_code,
+                          ).length
+                        }{" "}
+                        codes
+                      </Badge>
+                    </div>
                   </div>
-                  {/* Sample enriched items */}
-                  <ScrollArea className="h-[150px] border rounded-lg p-2">
-                    <div className="space-y-2">
+
+                  <ScrollArea className="h-[320px] border rounded-lg p-2">
+                    <div className="space-y-3">
                       {Object.entries(enrichedFields)
-                        .slice(0, 10)
+                        .slice(0, 20)
                         .map(([idx, fields]) => {
-                          const nameField = Object.entries(columnMapping).find(
+                          const itemIdx = parseInt(idx);
+                          const nf = Object.entries(columnMapping).find(
                             ([, v]) => v === "name",
                           )?.[0];
-                          const itemName = nameField
-                            ? String(
-                                rawData[parseInt(idx)]?.[nameField] ||
-                                  "Unknown",
-                              )
+                          const itemName = nf
+                            ? String(rawData[itemIdx]?.[nf] || "Unknown")
                             : "Item";
+                          const allImgs: Array<{
+                            url: string;
+                            source: string;
+                            width?: number;
+                            height?: number;
+                          }> = fields.all_images
+                            ? (fields.all_images.value as any[])
+                            : [];
+                          const sel = selectedImages[itemIdx] || [];
+                          const isSel = (url: string) =>
+                            sel.some((s) => s.url === url);
+                          const toggle = (img: {
+                            url: string;
+                            source: string;
+                            width?: number;
+                            height?: number;
+                          }) => {
+                            setSelectedImages((prev) => {
+                              const c = prev[itemIdx] || [];
+                              return {
+                                ...prev,
+                                [itemIdx]: c.some((s) => s.url === img.url)
+                                  ? c.filter((s) => s.url !== img.url)
+                                  : [...c, img],
+                              };
+                            });
+                          };
+                          const addUrl = () => {
+                            const u = (manualImageUrl[itemIdx] || "").trim();
+                            if (!u || !u.startsWith("http")) return;
+                            const img = { url: u, source: "manual" };
+                            setSelectedImages((prev) => ({
+                              ...prev,
+                              [itemIdx]: [...(prev[itemIdx] || []), img],
+                            }));
+                            setEnrichedFields((prev) => ({
+                              ...prev,
+                              [itemIdx]: {
+                                ...prev[itemIdx],
+                                all_images: {
+                                  value: [...allImgs, img],
+                                  source: "manual",
+                                },
+                              },
+                            }));
+                            setManualImageUrl((prev) => ({
+                              ...prev,
+                              [itemIdx]: "",
+                            }));
+                          };
                           return (
                             <div
                               key={idx}
-                              className="text-xs p-2 rounded bg-muted/50"
+                              className="p-3 rounded-lg bg-muted/40 border space-y-2"
                             >
-                              <span className="font-medium">{itemName}</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {Object.entries(fields).map(([field, data]) => (
-                                  <Badge
-                                    key={field}
-                                    variant="outline"
-                                    className="text-[10px] gap-0.5"
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-sm font-semibold truncate">
+                                    {itemName}
+                                  </span>
+                                  {/* Image count badge */}
+                                  {(() => {
+                                    const status = imageSearchStatus[itemIdx];
+                                    const imgCount = allImgs.length;
+                                    if (status === "found" || imgCount >= 5)
+                                      return (
+                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-300 text-[10px] gap-0.5 shrink-0">
+                                          <CircleCheck className="h-2.5 w-2.5" />{" "}
+                                          5/5
+                                        </Badge>
+                                      );
+                                    if (status === "partial" || imgCount > 0)
+                                      return (
+                                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-300 text-[10px] gap-0.5 shrink-0">
+                                          <CircleAlert className="h-2.5 w-2.5" />{" "}
+                                          {imgCount}/5
+                                        </Badge>
+                                      );
+                                    return (
+                                      <Badge className="bg-red-500/10 text-red-600 border-red-300 text-[10px] gap-0.5 shrink-0">
+                                        <CircleAlert className="h-2.5 w-2.5" />{" "}
+                                        No Images
+                                      </Badge>
+                                    );
+                                  })()}
+                                </div>
+                                <div className="flex flex-wrap gap-1 items-center">
+                                  {Object.entries(fields)
+                                    .filter(
+                                      ([f]) =>
+                                        ![
+                                          "image_url",
+                                          "sub_images",
+                                          "all_images",
+                                        ].includes(f),
+                                    )
+                                    .map(([f, d]) => (
+                                      <Badge
+                                        key={f}
+                                        variant="outline"
+                                        className="text-[10px] gap-0.5"
+                                      >
+                                        {[
+                                          "online",
+                                          "wikipedia",
+                                          "duckduckgo",
+                                          "google",
+                                          "wikimedia",
+                                        ].includes(d.source) ? (
+                                          <Globe className="h-2.5 w-2.5 text-blue-500" />
+                                        ) : (
+                                          <Sparkles className="h-2.5 w-2.5 text-amber-500" />
+                                        )}
+                                        {f}
+                                      </Badge>
+                                    ))}
+                                  {/* Re-fetch button */}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 gap-1 text-[10px]"
+                                    onClick={async () => {
+                                      try {
+                                        const bf = Object.entries(
+                                          columnMapping,
+                                        ).find(([, v]) => v === "brand")?.[0];
+                                        const mf = Object.entries(
+                                          columnMapping,
+                                        ).find(
+                                          ([, v]) => v === "model_number",
+                                        )?.[0];
+                                        const { data, error } =
+                                          await supabase.functions.invoke(
+                                            "enrich-items",
+                                            {
+                                              body: {
+                                                items: [
+                                                  {
+                                                    name: itemName,
+                                                    brand: bf
+                                                      ? String(
+                                                          rawData[itemIdx]?.[
+                                                            bf
+                                                          ] || "",
+                                                        ).trim()
+                                                      : undefined,
+                                                    catalog_number: mf
+                                                      ? String(
+                                                          rawData[itemIdx]?.[
+                                                            mf
+                                                          ] || "",
+                                                        ).trim()
+                                                      : undefined,
+                                                  },
+                                                ],
+                                              },
+                                            },
+                                          );
+                                        if (!error && data?.results?.[0]) {
+                                          const result = data.results[0];
+                                          const newImgs = (
+                                            result.image_urls || []
+                                          ).map((img: any) =>
+                                            typeof img === "string"
+                                              ? {
+                                                  url: img,
+                                                  source: "wikimedia_auto",
+                                                }
+                                              : img,
+                                          );
+                                          setEnrichedFields((prev) => ({
+                                            ...prev,
+                                            [itemIdx]: {
+                                              ...prev[itemIdx],
+                                              all_images: {
+                                                value: newImgs,
+                                                source: "wikimedia_auto",
+                                              },
+                                              image_url: newImgs[0]
+                                                ? {
+                                                    value: newImgs[0].url,
+                                                    source: "wikimedia_auto",
+                                                  }
+                                                : prev[itemIdx]?.image_url,
+                                            },
+                                          }));
+                                          setSelectedImages((prev) => ({
+                                            ...prev,
+                                            [itemIdx]: newImgs,
+                                          }));
+                                          setImageSearchStatus((prev) => ({
+                                            ...prev,
+                                            [itemIdx]:
+                                              result.image_search_status ||
+                                              (newImgs.length >= 5
+                                                ? "found"
+                                                : newImgs.length > 0
+                                                  ? "partial"
+                                                  : "not_found"),
+                                          }));
+                                          toast({
+                                            title: "Re-fetch Complete",
+                                            description: `Found ${newImgs.length} images for ${itemName}`,
+                                          });
+                                        }
+                                      } catch (err) {
+                                        console.error("Re-fetch error:", err);
+                                        toast({
+                                          variant: "destructive",
+                                          title: "Re-fetch Failed",
+                                          description:
+                                            "Could not fetch images. Try again.",
+                                        });
+                                      }
+                                    }}
                                   >
-                                    {data.source === "online" ||
-                                    data.source === "wikipedia" ||
-                                    data.source === "duckduckgo" ? (
-                                      <Globe className="h-2.5 w-2.5 text-blue-500" />
-                                    ) : (
-                                      <Sparkles className="h-2.5 w-2.5 text-amber-500" />
-                                    )}
-                                    {field}: {String(data.value).slice(0, 30)}
-                                    {String(data.value).length > 30
-                                      ? "..."
-                                      : ""}
-                                  </Badge>
-                                ))}
+                                    <RefreshCw className="h-2.5 w-2.5" />{" "}
+                                    Re-fetch
+                                  </Button>
+                                </div>
                               </div>
+                              {allImgs.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {allImgs.map((img, ii) => (
+                                    <div
+                                      key={ii}
+                                      className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 cursor-pointer transition-all hover:scale-105 ${
+                                        isSel(img.url)
+                                          ? "border-primary ring-2 ring-primary/30"
+                                          : "border-muted hover:border-primary/50"
+                                      }`}
+                                      onClick={() => toggle(img)}
+                                    >
+                                      <img
+                                        src={img.url}
+                                        alt={`${itemName} ${ii + 1}`}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src =
+                                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23a1a1aa' font-size='10'%3EError%3C/text%3E%3C/svg%3E";
+                                        }}
+                                      />
+                                      <div
+                                        className={`absolute top-0.5 right-0.5 w-4 h-4 rounded-sm flex items-center justify-center ${isSel(img.url) ? "bg-primary text-primary-foreground" : "bg-black/40 text-white/70"}`}
+                                      >
+                                        {isSel(img.url) && (
+                                          <Check className="h-3 w-3" />
+                                        )}
+                                      </div>
+                                      {sel.length > 0 &&
+                                        sel[0].url === img.url && (
+                                          <div className="absolute bottom-0 left-0 right-0 bg-primary/80 text-primary-foreground text-[8px] text-center py-0.5 font-bold">
+                                            PRIMARY
+                                          </div>
+                                        )}
+                                      <div className="absolute top-0.5 left-0.5 bg-black/50 text-white text-[7px] px-1 rounded">
+                                        {img.source}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 py-2 px-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                                  <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                  <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                                    No images found — use the URL input below to
+                                    add manually
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  placeholder="Paste image URL..."
+                                  value={manualImageUrl[itemIdx] || ""}
+                                  onChange={(e) =>
+                                    setManualImageUrl((prev) => ({
+                                      ...prev,
+                                      [itemIdx]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") addUrl();
+                                  }}
+                                  className="h-7 text-xs flex-1"
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 gap-1"
+                                  onClick={addUrl}
+                                  disabled={
+                                    !(manualImageUrl[itemIdx] || "")
+                                      .trim()
+                                      .startsWith("http")
+                                  }
+                                >
+                                  <Plus className="h-3 w-3" /> Add
+                                </Button>
+                              </div>
+                              {sel.length > 0 && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  {sel.length} image
+                                  {sel.length !== 1 ? "s" : ""} selected
+                                  {sel.length > 1 &&
+                                    ` (1 primary + ${sel.length - 1} additional)`}
+                                </p>
+                              )}
                             </div>
                           );
                         })}
@@ -1951,6 +2500,7 @@ export function BulkImportWizard({
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>
                       <TableHead className="w-16">Status</TableHead>
+                      <TableHead className="w-14">Image</TableHead>
                       {Object.entries(columnMapping)
                         .filter(([, v]) => v && v !== "skip")
                         .map(([source, target]) => (
@@ -1998,6 +2548,40 @@ export function BulkImportWizard({
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                        </TableCell>
+                        <TableCell>
+                          {selectedImages[idx]?.length > 0 ? (
+                            <div className="relative w-fit">
+                              <img
+                                src={selectedImages[idx][0].url}
+                                alt=""
+                                className="w-8 h-8 rounded object-cover border"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display =
+                                    "none";
+                                }}
+                              />
+                              {selectedImages[idx].length > 1 && (
+                                <Badge className="absolute -top-2 -right-2 h-4 min-w-[1rem] px-1 bg-primary text-[8px] flex items-center justify-center rounded-full border-none font-bold">
+                                  {selectedImages[idx].length}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : enrichedFields[idx]?.image_url ? (
+                            <img
+                              src={String(enrichedFields[idx].image_url.value)}
+                              alt=""
+                              className="w-8 h-8 rounded object-cover border"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display =
+                                  "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded border bg-muted flex items-center justify-center">
+                              <ImageIcon className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                          )}
                         </TableCell>
                         {Object.entries(columnMapping)
                           .filter(([, v]) => v && v !== "skip")

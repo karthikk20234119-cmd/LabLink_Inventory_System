@@ -193,6 +193,17 @@ const SAFETY_KEYWORDS: Record<string, string[]> = {
   low: [],
 };
 
+const DEFAULT_QUANTITIES: Record<string, number> = {
+  Equipment: 1,
+  Glassware: 10,
+  Chemical: 5,
+  "Measuring Instrument": 2,
+  "Safety Equipment": 10,
+  Tool: 3,
+  Consumable: 50,
+  Furniture: 1,
+};
+
 function inferItemType(name: string, description?: string): string | null {
   const text = `${name} ${description || ""}`.toLowerCase();
   for (const [type, keywords] of Object.entries(ITEM_TYPE_KEYWORDS)) {
@@ -209,116 +220,300 @@ function inferSafetyLevel(name: string, description?: string): string | null {
   return "low";
 }
 
-// ─── Online enrichment via free APIs ──────────────────────────────────────────
-
-interface EnrichmentResult {
-  name: string;
-  description: string | null;
-  image_url: string | null;
-  item_type: string | null;
-  safety_level: string | null;
-  source: string;
+function inferDefaultQuantity(itemType: string | null): number {
+  if (itemType && DEFAULT_QUANTITIES[itemType]) {
+    return DEFAULT_QUANTITIES[itemType];
+  }
+  return 1;
 }
 
-async function fetchFromWikipedia(
-  query: string,
-): Promise<{ description: string | null; image_url: string | null }> {
+// ─── Image result type ────────────────────────────────────────────────────────
+
+interface ImageResult {
+  url: string;
+  source: string;
+  width?: number;
+  height?: number;
+  mime?: string;
+  title?: string;
+}
+
+// ─── Normalize URL for dedup ──────────────────────────────────────────────────
+
+function normalizeUrl(url: string): string {
   try {
-    // Step 1: Search for the item
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`.toLowerCase().replace(/\/$/, "");
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
+function deduplicateImages(images: ImageResult[]): ImageResult[] {
+  const seen = new Set<string>();
+  return images.filter((img) => {
+    const key = normalizeUrl(img.url);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ─── Image validation ─────────────────────────────────────────────────────────
+
+const VALID_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
+
+function isValidImageUrl(url: string): boolean {
+  if (!url || !url.startsWith("http")) return false;
+  const lower = url.toLowerCase();
+  // Skip tiny placeholders, SVG icons, logos
+  if (lower.includes("1x1") || lower.includes("pixel")) return false;
+  if (lower.endsWith(".svg")) return false;
+  if (lower.includes("logo") && lower.includes("wiki")) return false;
+  if (
+    lower.includes("icon") &&
+    (lower.includes("commons") || lower.includes("wiki"))
+  )
+    return false;
+  // Must end with valid image extension or be a wikimedia thumb URL
+  const hasValidExt = /\.(jpe?g|png|webp)(\?.*)?$/i.test(lower);
+  const isThumb = lower.includes("/thumb/") && lower.includes("wikimedia");
+  return hasValidExt || isThumb;
+}
+
+function isValidImageFormat(mime?: string): boolean {
+  if (!mime) return true; // Allow if mime not provided (we'll check URL instead)
+  return VALID_IMAGE_MIMES.includes(mime.toLowerCase());
+}
+
+function meetsMinResolution(
+  width?: number,
+  height?: number,
+  minSize = 500,
+): boolean {
+  if (!width || !height) return true; // Allow if dimensions not known
+  return width >= minSize && height >= minSize;
+}
+
+// ─── Wikimedia Commons Search (primary & only image source) ───────────────────
+
+async function fetchFromWikimediaCommons(
+  query: string,
+  limit = 10,
+): Promise<ImageResult[]> {
+  const images: ImageResult[] = [];
+  try {
+    const searchUrl =
+      `https://commons.wikimedia.org/w/api.php?action=query` +
+      `&generator=search&gsrsearch=${encodeURIComponent(query)}` +
+      `&gsrlimit=${limit}&gsrnamespace=6` +
+      `&prop=imageinfo&iiprop=url|size|mime` +
+      `&iiurlwidth=800&format=json&origin=*`;
+
+    const resp = await fetch(searchUrl, {
+      headers: { "User-Agent": "LabLink-Inventory/1.0 (contact@lablink.app)" },
+    });
+
+    if (!resp.ok) {
+      console.error(`Wikimedia API error: ${resp.status}`);
+      return images;
+    }
+
+    const data = await resp.json();
+    const pages = data.query?.pages;
+    if (!pages) return images;
+
+    for (const page of Object.values(pages) as any[]) {
+      if (page.imageinfo && page.imageinfo.length > 0) {
+        const info = page.imageinfo[0];
+
+        // Only accept valid image formats (jpg, png, webp)
+        if (!isValidImageFormat(info.mime)) continue;
+
+        // Check minimum resolution (500x500)
+        const imgWidth = info.thumbwidth || info.width;
+        const imgHeight = info.thumbheight || info.height;
+        if (!meetsMinResolution(imgWidth, imgHeight, 300)) continue;
+        // We use 300 as the threshold for thumbnails since iiurlwidth=800
+        // will give us 800px wide thumbs, but original might be 500+
+
+        // Use the thumbnail URL (800px wide) for consistent sizing
+        const imgUrl = info.thumburl || info.url;
+        if (imgUrl && isValidImageUrl(imgUrl)) {
+          images.push({
+            url: imgUrl,
+            source: "wikimedia_auto",
+            width: imgWidth,
+            height: imgHeight,
+            mime: info.mime,
+            title: page.title,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`Wikimedia Commons fetch error for "${query}":`, err);
+  }
+  return images;
+}
+
+// ─── Wikipedia (for descriptions only, no images) ─────────────────────────────
+
+async function fetchDescriptionFromWikipedia(
+  query: string,
+): Promise<string | null> {
+  try {
     const searchUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
     const resp = await fetch(searchUrl, {
       headers: { "User-Agent": "LabLink-Inventory/1.0" },
     });
 
     if (!resp.ok) {
-      // Try with just the first word or main term
+      // Try simplified search
       const simplified = query.split(/\s+/).slice(0, 2).join(" ");
       const retryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(simplified)}`;
       const retryResp = await fetch(retryUrl, {
         headers: { "User-Agent": "LabLink-Inventory/1.0" },
       });
-      if (!retryResp.ok) return { description: null, image_url: null };
+      if (!retryResp.ok) return null;
       const retryData = await retryResp.json();
-      return {
-        description: retryData.extract || null,
-        image_url:
-          retryData.thumbnail?.source ||
-          retryData.originalimage?.source ||
-          null,
-      };
+      return retryData.extract || null;
     }
 
     const data = await resp.json();
-    return {
-      description: data.extract || null,
-      image_url: data.thumbnail?.source || data.originalimage?.source || null,
-    };
+    return data.extract || null;
   } catch (err) {
     console.error(`Wikipedia fetch error for "${query}":`, err);
-    return { description: null, image_url: null };
+    return null;
   }
 }
 
-async function fetchFromDuckDuckGo(
+// ─── DuckDuckGo (for descriptions only, no images) ───────────────────────────
+
+async function fetchDescriptionFromDuckDuckGo(
   query: string,
-): Promise<{ description: string | null; image_url: string | null }> {
+): Promise<string | null> {
   try {
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
     const resp = await fetch(url, {
       headers: { "User-Agent": "LabLink-Inventory/1.0" },
     });
-
-    if (!resp.ok) return { description: null, image_url: null };
-
+    if (!resp.ok) return null;
     const data = await resp.json();
-    const description =
-      data.Abstract || data.AbstractText || data.Answer || null;
-    const image_url = data.Image
-      ? data.Image.startsWith("http")
-        ? data.Image
-        : `https://duckduckgo.com${data.Image}`
-      : null;
-
-    return { description, image_url };
+    return data.Abstract || data.AbstractText || data.Answer || null;
   } catch (err) {
     console.error(`DuckDuckGo fetch error for "${query}":`, err);
-    return { description: null, image_url: null };
+    return null;
   }
+}
+
+// ─── Main enrichment per item ─────────────────────────────────────────────────
+
+const TARGET_IMAGE_COUNT = 5;
+
+interface EnrichmentResult {
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  image_urls: ImageResult[];
+  item_type: string | null;
+  safety_level: string | null;
+  suggested_quantity: number;
+  source: string;
+  search_query: string;
+  image_search_status: "found" | "partial" | "not_found";
+  image_count: number;
 }
 
 async function enrichItem(
   name: string,
   brand?: string,
+  catalogNumber?: string,
 ): Promise<EnrichmentResult> {
-  const searchQuery = brand ? `${name} ${brand}` : name;
+  // Build primary search query
+  const searchParts = [name, brand, catalogNumber].filter(Boolean);
+  const primaryQuery = searchParts.join(" ");
+  const labQuery = `${primaryQuery} laboratory equipment`;
 
-  // Try Wikipedia first (usually better quality for lab equipment)
-  const wiki = await fetchFromWikipedia(searchQuery);
+  // 1. Fetch descriptions from Wikipedia and DuckDuckGo (in parallel)
+  const [wikiDesc, ddgDesc] = await Promise.all([
+    fetchDescriptionFromWikipedia(primaryQuery),
+    fetchDescriptionFromDuckDuckGo(labQuery),
+  ]);
 
-  // If Wikipedia didn't return enough, try DuckDuckGo
-  let ddg = {
-    description: null as string | null,
-    image_url: null as string | null,
-  };
-  if (!wiki.description && !wiki.image_url) {
-    ddg = await fetchFromDuckDuckGo(searchQuery + " laboratory equipment");
-  }
-
-  const description = wiki.description || ddg.description;
-  const image_url = wiki.image_url || ddg.image_url;
-  const source = wiki.description
+  const description = wikiDesc || ddgDesc;
+  const descSource = wikiDesc
     ? "wikipedia"
-    : ddg.description
+    : ddgDesc
       ? "duckduckgo"
       : "heuristic";
+
+  // 2. Fetch images from Wikimedia Commons ONLY
+  let allImages: ImageResult[] = [];
+
+  // Primary query: item name + brand + catalog number
+  const primaryImages = await fetchFromWikimediaCommons(primaryQuery, 10);
+  allImages.push(...primaryImages);
+
+  // If not enough images, try with lab context
+  if (allImages.length < TARGET_IMAGE_COUNT) {
+    const labImages = await fetchFromWikimediaCommons(labQuery, 10);
+    allImages.push(...labImages);
+  }
+
+  // If still not enough, try simplified queries
+  if (allImages.length < TARGET_IMAGE_COUNT) {
+    // Try just item name
+    const simpleImages = await fetchFromWikimediaCommons(name, 10);
+    allImages.push(...simpleImages);
+  }
+
+  // If still not enough, try item name + "product"
+  if (allImages.length < TARGET_IMAGE_COUNT) {
+    const productImages = await fetchFromWikimediaCommons(
+      `${name} product`,
+      10,
+    );
+    allImages.push(...productImages);
+  }
+
+  // 3. Deduplicate
+  allImages = deduplicateImages(allImages);
+
+  // 4. Filter for quality: valid format + minimum resolution
+  allImages = allImages.filter((img) => {
+    if (!isValidImageUrl(img.url)) return false;
+    if (!isValidImageFormat(img.mime)) return false;
+    return true;
+  });
+
+  // 5. Take exactly TARGET_IMAGE_COUNT (5)
+  allImages = allImages.slice(0, TARGET_IMAGE_COUNT);
+
+  // 6. Determine image search status
+  let imageSearchStatus: "found" | "partial" | "not_found";
+  if (allImages.length >= TARGET_IMAGE_COUNT) {
+    imageSearchStatus = "found";
+  } else if (allImages.length > 0) {
+    imageSearchStatus = "partial";
+  } else {
+    imageSearchStatus = "not_found";
+  }
+
+  const itemType = inferItemType(name, description || undefined);
 
   return {
     name,
     description,
-    image_url,
-    item_type: inferItemType(name, description || undefined),
+    image_url: allImages[0]?.url || null,
+    image_urls: allImages,
+    item_type: itemType,
     safety_level: inferSafetyLevel(name, description || undefined),
-    source,
+    suggested_quantity: inferDefaultQuantity(itemType),
+    source: descSource,
+    search_query: primaryQuery,
+    image_search_status: imageSearchStatus,
+    image_count: allImages.length,
   };
 }
 
@@ -332,7 +527,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { items } = (await req.json()) as {
-      items: Array<{ name: string; brand?: string }>;
+      items: Array<{ name: string; brand?: string; catalog_number?: string }>;
     };
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -344,30 +539,69 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Limit batch size to prevent abuse
     const batch = items.slice(0, 50);
-    console.log(`Enriching ${batch.length} items...`);
+    console.log(`Enriching ${batch.length} items (Wikimedia Commons only)...`);
 
-    // Process items with concurrency limit (5 at a time)
+    // Process items with concurrency limit (3 at a time)
     const results: EnrichmentResult[] = [];
-    const concurrencyLimit = 5;
+    const concurrencyLimit = 3;
 
     for (let i = 0; i < batch.length; i += concurrencyLimit) {
       const chunk = batch.slice(i, i + concurrencyLimit);
-      const chunkResults = await Promise.all(
-        chunk.map((item) => enrichItem(item.name, item.brand)),
+      const chunkResults = await Promise.allSettled(
+        chunk.map((item) =>
+          enrichItem(item.name, item.brand, item.catalog_number),
+        ),
       );
-      results.push(...chunkResults);
 
-      // Small delay between chunks to be respectful to APIs
+      // Handle individual failures gracefully
+      for (let j = 0; j < chunkResults.length; j++) {
+        const result = chunkResults[j];
+        if (result.status === "fulfilled") {
+          results.push(result.value);
+        } else {
+          console.error(`Failed to enrich "${chunk[j].name}":`, result.reason);
+          const itemType = inferItemType(chunk[j].name);
+          results.push({
+            name: chunk[j].name,
+            description: null,
+            image_url: null,
+            image_urls: [],
+            item_type: itemType,
+            safety_level: inferSafetyLevel(chunk[j].name),
+            suggested_quantity: inferDefaultQuantity(itemType),
+            source: "heuristic",
+            search_query: chunk[j].name,
+            image_search_status: "not_found",
+            image_count: 0,
+          });
+        }
+      }
+
+      // Rate-limit: 300ms delay between chunks
       if (i + concurrencyLimit < batch.length) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
     }
 
+    const stats = {
+      total: results.length,
+      descriptions: results.filter((r) => r.description).length,
+      fullImages: results.filter((r) => r.image_count >= TARGET_IMAGE_COUNT)
+        .length,
+      partialImages: results.filter(
+        (r) => r.image_count > 0 && r.image_count < TARGET_IMAGE_COUNT,
+      ).length,
+      noImages: results.filter((r) => r.image_count === 0).length,
+      totalImages: results.reduce((sum, r) => sum + r.image_count, 0),
+    };
     console.log(
-      `Enrichment complete: ${results.filter((r) => r.description).length} descriptions, ${results.filter((r) => r.image_url).length} images found`,
+      `Enrichment complete: ${stats.descriptions} descriptions, ` +
+        `${stats.fullImages} items with ${TARGET_IMAGE_COUNT}/5 images, ` +
+        `${stats.partialImages} partial, ${stats.noImages} no images, ` +
+        `${stats.totalImages} total images`,
     );
 
-    return new Response(JSON.stringify({ results }), {
+    return new Response(JSON.stringify({ results, stats }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -226,6 +226,22 @@ export default function PublicItemDetail() {
   };
 
   // Loading state
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (progressRef.current && item) {
+      const width = Math.min(
+        (item.current_quantity / Math.max(item.minimum_quantity * 2, 1)) * 100,
+        100,
+      );
+      progressRef.current.style.width = `${width}%`;
+      progressRef.current.style.backgroundImage =
+        item.current_quantity > item.minimum_quantity
+          ? "linear-gradient(to right, #10b981, #34d399)"
+          : "linear-gradient(to right, #f59e0b, #f87171)";
+    }
+  }, [item]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -488,14 +504,8 @@ export default function PublicItemDetail() {
                 {/* Progress */}
                 <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${
-                      item.current_quantity > item.minimum_quantity
-                        ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
-                        : "bg-gradient-to-r from-amber-500 to-red-400"
-                    }`}
-                    style={{
-                      width: `${Math.min((item.current_quantity / Math.max(item.minimum_quantity * 2, 1)) * 100, 100)}%`,
-                    }}
+                    ref={progressRef}
+                    className="h-full rounded-full transition-all bg-primary"
                   />
                 </div>
               </CardContent>

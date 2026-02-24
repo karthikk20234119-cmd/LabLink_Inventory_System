@@ -902,6 +902,7 @@ export default function Auth() {
                               <select
                                 id="department"
                                 name="department"
+                                aria-label="Select Department"
                                 className={`flex h-11 w-full rounded-lg border-2 border-input bg-background px-4 py-2 pl-10 text-sm transition-all duration-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ${errors.department ? "border-destructive" : ""}`}
                                 value={formData.department}
                                 onChange={handleInputChange}
